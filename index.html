@@ -64,11 +64,21 @@
       width: 100%;
       aspect-ratio: 16/9;
       display: flex;
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       color: #888;
       font-size: 1.2rem;
       text-align: center;
+      padding: 1rem;
+    }
+    #media-player .coming-soon {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 1rem;
+      border-radius: 8px;
+      margin: 1rem 0;
+      color: var(--primary);
+      font-size: 1rem;
     }
     #messages-container {
       max-height: 300px;
@@ -247,6 +257,10 @@
           <h2>Collaborative Media Player</h2>
           <div id="media-player">
             <p>Upload a video or paste a media URL to play</p>
+            <div class="coming-soon">
+              <strong>Collaborative Features Coming Soon!</strong><br>
+              <small>- YouTube sync<br>- Queue management<br>- Play/Pause/Seek sync<br>- Host control mode</small>
+            </div>
             <input type="url" id="media-url-input" placeholder="Paste media URL (e.g., .mp4, .webm)" aria-label="Media URL">
             <button id="load-media" aria-label="Load media">Load Media</button>
           </div>
