@@ -50,12 +50,25 @@
       font-family: monospace;
       color: var(--primary);
     }
-    .polls-section, .message-wall, .settings-modal {
+    .youtube-player, .polls-section, .message-wall, .queue-section, .settings-modal {
       background: var(--surface);
       border-radius: 12px;
       border: 1px solid var(--border);
       padding: 1rem;
       margin-bottom: 1rem;
+    }
+    #media-player {
+      background: #000;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      width: 100%;
+      aspect-ratio: 16/9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: #888;
+      font-size: 1.2rem;
+      text-align: center;
     }
     #messages-container {
       max-height: 300px;
@@ -196,12 +209,6 @@
     [aria-hidden="true"] {
       display: none;
     }
-    .coming-soon {
-      color: var(--text-muted);
-      font-style: italic;
-      padding: 2rem;
-      text-align: center;
-    }
   </style>
 </head>
 <body>
@@ -217,6 +224,7 @@
 
     <div class="tab-container" role="tablist">
       <button class="tab active" id="tab-connection" role="tab" aria-selected="true" aria-controls="panel-connection">Connection</button>
+      <button class="tab" id="tab-player" role="tab" aria-selected="false" aria-controls="panel-player">Player</button>
       <button class="tab" id="tab-polls" role="tab" aria-selected="false" aria-controls="panel-polls">Polls</button>
       <button class="tab" id="tab-wall" role="tab" aria-selected="false" aria-controls="panel-wall">Wall</button>
     </div>
@@ -230,6 +238,26 @@
           <button id="join-room" aria-label="Join room">Join Room</button>
           <button id="create-room" aria-label="Create new room">Create New Room</button>
           <div class="peer-list" id="peer-list" aria-label="Active peers"></div>
+        </div>
+      </div>
+
+      <!-- Player Tab -->
+      <div id="panel-player" class="tab-content" role="tabpanel" aria-labelledby="tab-player" hidden>
+        <div class="youtube-player">
+          <h2>Collaborative Media Player</h2>
+          <div id="media-player">
+            <p>Upload a video or paste a media URL to play</p>
+            <input type="url" id="media-url-input" placeholder="Paste media URL (e.g., .mp4, .webm)" aria-label="Media URL">
+            <button id="load-media" aria-label="Load media">Load Media</button>
+          </div>
+          <div class="queue-section">
+            <h3>Queue</h3>
+            <div id="queue-container"></div>
+            <input type="text" id="media-url-input" placeholder="Paste media URL" aria-label="Media URL">
+            <button id="add-to-queue" aria-label="Add to queue">Add to Queue</button>
+            <button id="play-next" aria-label="Play next">Play Next</button>
+            <button id="clear-queue" aria-label="Clear queue">Clear Queue</button>
+          </div>
         </div>
       </div>
 
@@ -258,12 +286,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Collaborative Features Coming Soon -->
-      <div class="coming-soon">
-        <h2>Collaborative Features</h2>
-        <p>YouTube sync, queue management, and more coming soon!</p>
-      </div>
     </main>
   </div>
 
@@ -274,6 +296,7 @@
       <div class="settings-tabs">
         <button class="active" data-tab="theme">Theme</button>
         <button data-tab="connection">Connection</button>
+        <button data-tab="queue">Queue</button>
         <button data-tab="polls">Polls</button>
         <button data-tab="wall">Wall</button>
         <button data-tab="privacy">Privacy</button>
@@ -297,6 +320,18 @@
         </label><br>
         <label>
           <input type="number" id="max-peers" value="10" min="1" max="50"> Max peers
+        </label>
+      </div>
+
+      <div class="tab-content" id="queue-settings">
+        <h3>Queue Settings</h3>
+        <select id="queue-sort" aria-label="Queue sort method">
+          <option value="votes">Sort by Votes + Auto-play</option>
+          <option value="time">Sort by Time</option>
+          <option value="custom">Custom Order</option>
+        </select><br>
+        <label>
+          <input type="checkbox" id="queue-loop"> Loop queue
         </label>
       </div>
 
@@ -368,6 +403,8 @@
     let peers = {};
     let polls = [];
     let messages = [];
+    let queue = [];
+    let currentVideo = '';
     let isOnline = navigator.onLine;
 
     // Initialize PeerJS
@@ -444,6 +481,14 @@
       }
     });
 
+    document.getElementById('add-to-queue').addEventListener('click', () => {
+      const url = document.getElementById('media-url-input').value;
+      if (url) {
+        addToQueue(url);
+        document.getElementById('media-url-input').value = '';
+      }
+    });
+
     document.getElementById('message-input').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         const message = e.target.value;
@@ -500,6 +545,40 @@
           messageElement.remove();
         }, 1000);
       }, document.getElementById('message-lifetime').value * 1000);
+    }
+
+    // Add to queue
+    function addToQueue(url) {
+      queue.push({ url, votes: 0 });
+      renderQueue();
+    }
+
+    // Render queue
+    function renderQueue() {
+      const queueContainer = document.getElementById('queue-container');
+      queueContainer.innerHTML = '';
+      queue.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.style.display = 'flex';
+        itemEl.style.justifyContent = 'space-between';
+        itemEl.style.alignItems = 'center';
+        itemEl.style.padding = '0.5rem';
+        itemEl.style.background = 'rgba(0, 0, 0, 0.2)';
+        itemEl.innerHTML = `
+          <span>${index + 1}. ${item.url}</span>
+          <span>${item.votes} votes</span>
+          <button onclick="voteForItem(${index})">Vote</button>
+        `;
+        queueContainer.appendChild(itemEl);
+      });
+    }
+
+    // Vote for queue item
+    function voteForItem(index) {
+      if (queue[index]) {
+        queue[index].votes++;
+        renderQueue();
+      }
     }
 
     // Theme changer
