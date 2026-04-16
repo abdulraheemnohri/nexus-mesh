@@ -7,8 +7,9 @@
   "main": "electron-main.js",
   "scripts": {
     "start": "electron .",
+    "start:electron": "electron .",
     "build:win": "electron-builder --win",
-    "android:init": "cap init nexus-mesh com.nexus.mesh --web-dir .",
+    "android:init": "cap init nexus-mesh com.nexus.mesh --web-dir www",
     "android:add": "cap add android",
     "android:sync": "cap sync android"
   },
@@ -31,7 +32,7 @@
       ]
     },
     "files": [
-      "**/*",
+      "www/**/*",
       "electron-main.js"
     ]
   }
