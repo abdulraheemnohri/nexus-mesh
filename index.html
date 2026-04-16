@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nexus Mesh - P2P Collaboration Hub</title>
+  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f0f13;
+      --surface: rgba(26, 26, 32, 0.85);
+      --surface-hover: rgba(36, 36, 42, 0.9);
+      --primary: #00e5ff;
+      --accent: #ff0055;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --text: #e8e8f0;
+      --text-muted: #8a8a9a;
+      --border: rgba(255, 255, 255, 0.08);
+      --glass: blur(16px);
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: var(--glass);
+    }
+    .app-container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 1rem;
+      width: 100%;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    #room-id {
+      font-family: monospace;
+      color: var(--primary);
+    }
+    .youtube-player, .polls-section, .message-wall, .queue-section, .settings-modal {
+      background: var(--surface);
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+    #yt-player {
+      background: #000;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    #messages-container {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 0.5rem;
+    }
+    .message {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      animation: fadeIn 0.3s ease-in;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    .settings-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    .settings-content {
+      background: var(--surface);
+      padding: 1rem;
+      border-radius: 12px;
+      max-width: 500px;
+      width: 100%;
+    }
+    button {
+      background: var(--primary);
+      color: var(--bg);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 0.25rem;
+    }
+    input {
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.5rem;
+      border-radius: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .settings-tabs button.active { background: var(--accent); }
+    .poll-option {
+      display: flex;
+      align-items: center;
+      margin: 0.5rem 0;
+    }
+    .poll-bar {
+      height: 20px;
+      background: var(--surface-hover);
+      border-radius: 4px;
+      margin: 0.25rem 0;
+    }
+    .toast {
+      position: fixed;
+      top: 1rem;
+      right: 1rem;
+      background: var(--surface);
+      padding: 0.75rem;
+      border-radius: 8px;
+      z-index: 1001;
+    }
+    .connection-status {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ff0055;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 var(--accent); }
+      70% { box-shadow: 0 0 0 10px transparent; }
+      100% { box-shadow: 0 0 0 0 transparent; }
+    }
+    .peer-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .peer-card {
+      background: rgba(0, 0, 0, 0.3);
+      padding: 0.5rem;
+      border-radius: 8px;
+      font-size: 0.8rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header>
+      <h1>Nexus Mesh</h1>
+      <div class="room-id-display">
+        Room: <span id="room-id">------</span>
+        <span class="connection-status" id="connection-status"></span>
+      </div>
+      <button id="settings-toggle">⚙️ Settings</button>
+    </header>
+
+    <main>
+      <!-- Connection Section -->
+      <div class="connection-section">
+        <h2>Connect to Room</h2>
+        <input type="text" id="join-room-id" placeholder="Enter Room ID">
+        <button id="join-room">Join Room</button>
+        <button id="create-room">Create New Room</button>
+        <div class="peer-list" id="peer-list"></div>
+      </div>
+
+      <!-- YouTube Player Section -->
+      <div class="youtube-player">
+        <h2>Collaborative YouTube Player</h2>
+        <div id="yt-player"></div>
+        <div class="queue-section">
+          <h3>Queue</h3>
+          <div id="queue-container"></div>
+          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL">
+          <button id="add-to-queue">Add to Queue</button>
+          <button id="play-next">Play Next</button>
+          <button id="clear-queue">Clear Queue</button>
+        </div>
+      </div>
+
+      <!-- Live Polls Section -->
+      <div class="polls-section">
+        <h2>Live Polls</h2>
+        <div id="polls-container"></div>
+        <button id="create-poll">+ New Poll</button>
+      </div>
+
+      <!-- Ephemeral Wall Section -->
+      <div class="message-wall">
+        <h2>Ephemeral Wall</h2>
+        <div id="messages-container"></div>
+        <input type="text" id="message-input" placeholder="Type a message...">
+        <div style="margin-top: 0.5rem;">
+          <label>
+            <input type="checkbox" id="profanity-filter"> Enable Profanity Filter
+          </label>
+          <label style="margin-left: 1rem;">
+            <input type="number" id="message-lifetime" value="60" min="10" max="300"> Message Lifetime (seconds)
+          </label>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="settings-modal" id="settings-modal">
+    <div class="settings-content">
+      <h2>Settings</h2>
+      <div class="settings-tabs">
+        <button class="active" data-tab="theme">Theme</button>
+        <button data-tab="connection">Connection</button>
+        <button data-tab="queue">Queue</button>
+        <button data-tab="polls">Polls</button>
+        <button data-tab="wall">Wall</button>
+        <button data-tab="privacy">Privacy</button>
+        <button data-tab="accessibility">Accessibility</button>
+      </div>
+      
+      <div class="tab-content active" id="theme-settings">
+        <h3>Theme</h3>
+        <select id="theme-select">
+          <option value="dark">Dark</option>
+          <option value="light">Light</option>
+          <option value="amoled">AMOLED</option>
+          <option value="system">System</option>
+        </select>
+      </div>
+
+      <div class="tab-content" id="connection-settings">
+        <h3>Connection Settings</h3>
+        <label>
+          <input type="checkbox" id="auto-accept-peers" checked> Auto-accept peers
+        </label><br>
+        <label>
+          <input type="number" id="max-peers" value="10" min="1" max="50"> Max peers
+        </label>
+      </div>
+
+      <div class="tab-content" id="queue-settings">
+        <h3>Queue Settings</h3>
+        <select id="queue-sort">
+          <option value="votes">Sort by Votes + Auto-play</option>
+          <option value="time">Sort by Time</option>
+          <option value="custom">Custom Order</option>
+        </select><br>
+        <label>
+          <input type="checkbox" id="queue-loop"> Loop queue
+        </label>
+      </div>
+
+      <div class="tab-content" id="polls-settings">
+        <h3>Poll Settings</h3>
+        <label>
+          <input type="number" id="max-poll-options" value="4" min="2" max="6"> Max options per poll
+        </label><br>
+        <label>
+          <input type="checkbox" id="anonymous-polls"> Allow anonymous voting
+        </label><br>
+        <label>
+          <input type="number" id="poll-expiry" value="300" min="30" max="3600"> Poll expiry (seconds)
+        </label>
+      </div>
+
+      <div class="tab-content" id="wall-settings">
+        <h3>Wall Settings</h3>
+        <label>
+          <input type="number" id="wall-lifetime" value="60" min="10" max="300"> Message lifetime (seconds)
+        </label><br>
+        <label>
+          <input type="checkbox" id="show-timestamps"> Show timestamps
+        </label>
+      </div>
+
+      <div class="tab-content" id="privacy-settings">
+        <h3>Privacy Settings</h3>
+        <label>
+          <input type="checkbox" id="clear-on-exit"> Clear data on exit
+        </label><br>
+        <label>
+          <input type="checkbox" id="local-only"> Local-only mode (no P2P)
+        </label>
+      </div>
+
+      <div class="tab-content" id="accessibility-settings">
+        <h3>Accessibility</h3>
+        <label>
+          <input type="range" id="font-scale" min="80" max="150" value="100"> Font scale (%)
+        </label><br>
+        <label>
+          <input type="checkbox" id="high-contrast"> High contrast mode
+        </label><br>
+        <label>
+          <input type="checkbox" id="reduced-motion"> Reduce motion
+        </label>
+      </div>
+
+      <button id="close-settings">Close</button>
+      <button id="export-state">Export State</button>
+      <button id="import-state">Import State</button>
+      <button id="clear-all-data">Clear All Data</button>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div class="toast" id="toast" style="display: none;"></div>
+
+  <!-- YouTube API -->
+  <script>
+    let ytPlayer;
+    function onYouTubeIframeAPIReady() {
+      ytPlayer = new YT.Player('yt-player', {
+        height: '360',
+        width: '100%',
+        events: {
+          'onReady': onPlayerReady,
+          'onStateChange': onPlayerStateChange
+        }
+      });
+    }
+    function onPlayerReady(event) {
+      console.log("YouTube Player Ready");
+    }
+    function onPlayerStateChange(event) {
+      console.log("Player State Changed:", event.data);
+    }
+  </script>
+
+  <!-- PeerJS & Core Logic -->
+  <script>
+    const peer = new Peer();
+    let roomId = generateRoomId();
+    let peers = {};
+    let polls = [];
+    let messages = [];
+    let queue = [];
+    let currentVideo = '';
+
+    // Initialize PeerJS
+    peer.on('open', (id) => {
+      roomId = id;
+      document.getElementById('room-id').textContent = id;
+      console.log("PeerJS ID:", id);
+      addToast("Room ID: " + id);
+    });
+
+    // Handle incoming connections
+    peer.on('connection', (conn) => {
+      conn.on('open', () => {
+        console.log("Connected to:", conn.peer);
+        peers[conn.peer] = conn;
+        updatePeerList();
+        addToast("Connected to peer: " + conn.peer);
+      });
+    });
+
+    // UI Event Listeners
+    document.getElementById('settings-toggle').addEventListener('click', () => {
+      document.getElementById('settings-modal').style.display = 'flex';
+    });
+
+    document.getElementById('close-settings').addEventListener('click', () => {
+      document.getElementById('settings-modal').style.display = 'none';
+    });
+
+    document.getElementById('create-room').addEventListener('click', () => {
+      roomId = generateRoomId();
+      document.getElementById('room-id').textContent = roomId;
+      addToast("New Room Created: " + roomId);
+    });
+
+    document.getElementById('join-room').addEventListener('click', () => {
+      const inputRoomId = document.getElementById('join-room-id').value;
+      if (inputRoomId) {
+        roomId = inputRoomId;
+        document.getElementById('room-id').textContent = roomId;
+        addToast("Joined Room: " + roomId);
+      }
+    });
+
+    document.getElementById('add-to-queue').addEventListener('click', () => {
+      const url = document.getElementById('yt-url-input').value;
+      if (url) {
+        addToQueue(url);
+        document.getElementById('yt-url-input').value = '';
+      }
+    });
+
+    document.getElementById('message-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const message = e.target.value;
+        if (message.trim()) {
+          addMessage(message);
+          e.target.value = '';
+        }
+      }
+    });
+
+    // Settings Tabs
+    document.querySelectorAll('.settings-tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.settings-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab + '-settings').classList.add('active');
+      });
+    });
+
+    // Toast function
+    function addToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.display = 'block';
+      setTimeout(() => {
+        toast.style.display = 'none';
+      }, 3000);
+    }
+
+    // Connection status
+    function updateConnectionStatus(status) {
+      const statusEl = document.getElementById('connection-status');
+      statusEl.style.background = status === 'connected' ? 'var(--success)' : 'var(--accent)';
+    }
+
+    // Peer list update
+    function updatePeerList() {
+      const peerListEl = document.getElementById('peer-list');
+      peerListEl.innerHTML = '';
+      Object.keys(peers).forEach(peerId => {
+        const peerCard = document.createElement('div');
+        peerCard.className = 'peer-card';
+        peerCard.textContent = peerId;
+        peerListEl.appendChild(peerCard);
+      });
+    }
+
+    // Generate random 6-character room ID
+    function generateRoomId() {
+      return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
+
+    // Add message to wall
+    function addMessage(text) {
+      const messageElement = document.createElement('div');
+      messageElement.className = 'message';
+      messageElement.textContent = text;
+      document.getElementById('messages-container').appendChild(messageElement);
+      setTimeout(() => {
+        messageElement.style.opacity = '0.5';
+        setTimeout(() => {
+          messageElement.remove();
+        }, 1000);
+      }, document.getElementById('message-lifetime').value * 1000);
+    }
+
+    // Add to queue
+    function addToQueue(url) {
+      queue.push({ url, votes: 0 });
+      renderQueue();
+    }
+
+    // Render queue
+    function renderQueue() {
+      const queueContainer = document.getElementById('queue-container');
+      queueContainer.innerHTML = '';
+      queue.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.style.display = 'flex';
+        itemEl.style.justifyContent = 'space-between';
+        itemEl.style.alignItems = 'center';
+        itemEl.style.padding = '0.5rem';
+        itemEl.style.background = 'rgba(0, 0, 0, 0.2)';
+        itemEl.innerHTML = `
+          <span>${index + 1}. ${item.url}</span>
+          <span>${item.votes} votes</span>
+          <button onclick="voteForItem(${index})">Vote</button>
+        `;
+        queueContainer.appendChild(itemEl);
+      });
+    }
+
+    // Vote for queue item
+    function voteForItem(index) {
+      if (queue[index]) {
+        queue[index].votes++;
+        renderQueue();
+      }
+    }
+
+    // Theme changer
+    document.getElementById('theme-select').addEventListener('change', (e) => {
+      document.documentElement.style.setProperty('--bg', e.target.value === 'light' ? '#ffffff' : '#0f0f13');
+      document.documentElement.style.setProperty('--surface', e.target.value === 'light' ? '#f5f5f5' : 'rgba(26, 26, 32, 0.85)');
+      document.documentElement.style.setProperty('--text', e.target.value === 'light' ? '#000000' : '#e8e8f0');
+    });
+  </script>
+
+  <!-- Load YouTube API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
