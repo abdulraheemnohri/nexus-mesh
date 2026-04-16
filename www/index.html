@@ -10,12 +10,16 @@
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
+    <div id="offline-banner" class="hide" style="position: fixed; top: 0; left: 0; right: 0; background: var(--accent); color: white; text-align: center; padding: 0.5rem; z-index: 10000; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em;">
+        OFFLINE MODE • RECONNECTING...
+    </div>
+
     <div id="setup-screen" class="setup-container">
         <div class="card setup-card">
             <h1 class="gradient-text">NEXUS MESH</h1>
             <p class="subtitle">Decentralized Collaboration Platform</p>
 
-            <button id="create-room" class="primary-btn large">🚀 Create Private Room</button>
+            <button id="create-room" class="primary-btn large" style="width: 100%;">🚀 Create Private Room</button>
 
             <div class="separator">
                 <span>OR JOIN SESSION</span>
@@ -23,7 +27,7 @@
 
             <div class="join-box">
                 <input type="text" id="join-id" placeholder="ENTER CODE" maxlength="6">
-                <button id="join-room">Join</button>
+                <button id="join-room" class="primary-btn">Join</button>
             </div>
         </div>
     </div>
@@ -40,6 +44,7 @@
 
             <div class="header-actions">
                 <img id="room-qr" class="qr-preview" title="Share via QR">
+                <button id="copy-link" class="icon-btn" title="Copy Invite Link">🔗</button>
                 <button id="settings-toggle" class="icon-btn">⚙️</button>
             </div>
         </header>
@@ -50,18 +55,18 @@
             <button class="mobile-tab" data-target="polls-view">📊 Polls</button>
         </nav>
 
-        <main class="main-layout container">
+        <main class="container">
             <div id="player-view" class="app-section left-col">
-                <section class="player-card card">
+                <section class="player-card card" style="overflow: hidden;">
                     <div id="youtube-player-container">
                         <div id="youtube-player"></div>
                     </div>
                 </section>
 
-                <section class="queue-card card">
-                    <div class="input-group">
+                <section class="queue-card card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                    <div class="input-group" style="padding: 0; border: none; margin-bottom: 1.5rem;">
                         <input type="text" id="video-url" placeholder="Paste YouTube link...">
-                        <button id="add-to-queue">Add</button>
+                        <button id="add-to-queue" class="primary-btn" style="min-width: 80px;">Add</button>
                     </div>
                     <div id="queue-list" class="queue-list"></div>
                 </section>
@@ -70,29 +75,30 @@
             <div class="right-col">
                 <div id="wall-view" class="app-section mobile-hide">
                     <section class="card wall-card">
-                        <div class="card-header">
-                            <h3>MESSAGE WALL</h3>
+                        <div class="card-header" style="padding: 1.5rem 1.5rem 0;">
+                            <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase;">Message Wall</h3>
                         </div>
                         <div id="wall-messages" class="wall-messages"></div>
                         <div class="input-group wall-input-box">
                             <input type="text" id="wall-input" placeholder="Type a message...">
-                            <button id="send-message" class="icon-btn">➜</button>
+                            <button id="send-message" class="icon-btn primary-btn">➜</button>
                         </div>
                     </section>
                 </div>
 
                 <div id="polls-view" class="app-section mobile-hide">
-                    <section class="card poll-card-wrapper">
-                        <div class="card-header">
-                            <h3>LIVE POLLS</h3>
-                            <button id="create-poll-btn" class="text-btn">+ New</button>
+                    <section class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase;">Live Polls</h3>
+                            <button id="create-poll-btn" class="text-btn">+ New Poll</button>
                         </div>
                         <div id="polls-list"></div>
                     </section>
 
-                    <section class="card topology-card">
-                        <h3>TOPOLOGY</h3>
+                    <section class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
+                        <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 1.5rem;">Network Topology</h3>
                         <div id="topology-viz" class="topology-box"></div>
+                    <div id="peer-list" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;"></div>
                     </section>
                 </div>
             </div>
@@ -101,62 +107,77 @@
 
     <div id="overlay" class="overlay"></div>
     <div id="settings-panel" class="side-panel">
-        <div class="panel-header">
+        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
             <h2>Settings</h2>
-            <button onclick="toggleSettings()" class="close-btn">✕</button>
+            <button onclick="toggleSettings()" class="icon-btn">✕</button>
         </div>
 
-        <div class="panel-content">
+        <div class="panel-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
             <div class="setting-item">
-                <label>UI Theme</label>
-                <select id="setting-theme" onchange="window.Settings.update('theme', this.value)">
+                <label style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">UI Theme</label>
+                <select id="setting-theme" onchange="window.Settings.update('theme', this.value)" style="margin-top: 0.5rem;">
                     <option value="dark">Space Night</option>
                     <option value="light">Arctic Light</option>
                     <option value="amoled">Pure Black</option>
                 </select>
             </div>
 
-            <div class="setting-item checkbox-item">
-                <input type="checkbox" id="setting-host-only" onchange="window.State.update('player.hostOnly', this.checked)">
-                <label for="setting-host-only">Restrict player sync to Host</label>
+            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
+                <input type="checkbox" id="setting-require-approval" onchange="window.Settings.update('requireApproval', this.checked)" style="width: auto;">
+                <label for="setting-require-approval" style="font-size: 0.9rem;">Host must approve joins</label>
+            </div>
+
+            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
+                <input type="checkbox" id="setting-host-only" onchange="window.State.update('player.hostOnly', this.checked)" style="width: auto;">
+                <label for="setting-host-only" style="font-size: 0.9rem;">Restrict Player Sync to Host</label>
+            </div>
+
+            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
+                <input type="checkbox" id="setting-sound-fx" checked onchange="window.Settings.update('soundFx', this.checked)" style="width: auto;">
+                <label for="setting-sound-fx" style="font-size: 0.9rem;">Enable Sound Effects</label>
             </div>
 
             <div class="setting-item">
-                <label>Message Lifetime</label>
-                <input type="range" min="10" max="300" step="10" id="setting-msg-life" oninput="window.Settings.update('msgLifetime', parseInt(this.value))">
-                <span id="msg-life-val" class="val-display">60s</span>
+                <label style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Message Lifetime</label>
+                <input type="range" min="10" max="300" step="10" id="setting-msg-life" oninput="window.Settings.update('msgLifetime', parseInt(this.value))" style="margin-top: 0.5rem;">
+                <span id="msg-life-val" style="display: block; text-align: center; font-size: 0.8rem; margin-top: 0.5rem;">60s</span>
             </div>
 
-            <div class="panel-footer">
-                <button id="export-data" class="secondary-btn">💾 Export Room State</button>
+            <div class="panel-footer" style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--border); padding-top: 2rem;">
+                <button id="export-data" class="secondary-btn" style="width: 100%;">💾 Export Session State</button>
                 <div class="file-input-wrapper">
-                    <button class="secondary-btn">📂 Import Room State</button>
-                    <input type="file" id="import-data">
+                    <button class="secondary-btn" style="width: 100%;">📂 Import Session State</button>
+                    <input type="file" id="import-data" style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
                 </div>
-                <button id="clear-local" class="danger-btn">🗑️ Clear Cache & Exit</button>
+                <div id="host-actions" class="hide" style="display: flex; flex-direction: column; gap: 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+                    <label style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Host Actions</label>
+                    <button onclick="window.State.clearQueue()" class="secondary-btn" style="width: 100%;">🧹 Clear Shared Queue</button>
+                    <button onclick="window.State.clearWall()" class="secondary-btn" style="width: 100%;">🧹 Clear Message Wall</button>
+                </div>
+                <button id="clear-local" class="secondary-btn" style="width: 100%; color: var(--accent); border-color: rgba(255,0,85,0.2);">🗑️ Wipe Local Cache</button>
             </div>
         </div>
     </div>
 
     <div id="poll-modal" class="modal">
         <div class="card modal-card">
-            <h3>New Poll</h3>
+            <h3>Create New Poll</h3>
             <div class="modal-body">
-                <input type="text" id="poll-q" placeholder="Enter question...">
-                <div id="poll-options-inputs" class="opt-list">
+                <input type="text" id="poll-q" placeholder="Enter your question...">
+                <div id="poll-options-inputs" class="opt-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0;">
                     <input type="text" class="poll-opt-in" placeholder="Option 1">
                     <input type="text" class="poll-opt-in" placeholder="Option 2">
                 </div>
-                <button onclick="addPollOptionField()" class="text-btn">+ Add More</button>
+                <button onclick="addPollOptionField()" class="text-btn" style="width: 100%; text-align: center;">+ Add Voting Option</button>
 
-                <div class="checkbox-item">
-                    <input type="checkbox" id="poll-anon">
+                <div class="checkbox-item" style="display: flex; align-items: center; gap: 0.8rem; margin: 1rem 0;">
+                    <input type="checkbox" id="poll-anon" style="width: auto;">
                     <label for="poll-anon">Anonymous voting</label>
                 </div>
 
-                <div class="modal-footer">
-                    <button id="submit-poll" class="primary-btn">Create Poll</button>
-                    <button onclick="closePollModal()" class="secondary-btn">Cancel</button>
+                <div class="modal-footer" style="display: flex; gap: 1rem;">
+                    <button id="submit-poll" class="primary-btn" style="flex: 1; padding: 1rem;">Create</button>
+                    <button onclick="closePollModal()" class="secondary-btn" style="flex: 1; padding: 1rem;">Cancel</button>
                 </div>
             </div>
         </div>
