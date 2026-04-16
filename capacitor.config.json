@@ -2,5 +2,8 @@
   "appId": "com.nexus.mesh",
   "appName": "Nexus Mesh",
   "webDir": ".",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "androidScheme": "https"
+  }
 }
