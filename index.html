@@ -64,21 +64,17 @@
       width: 100%;
       aspect-ratio: 16/9;
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       color: #888;
       font-size: 1.2rem;
       text-align: center;
-      padding: 1rem;
     }
-    #media-player .coming-soon {
-      background: rgba(0, 0, 0, 0.5);
-      padding: 1rem;
-      border-radius: 8px;
-      margin: 1rem 0;
-      color: var(--primary);
-      font-size: 1rem;
+    #video-container {
+      width: 100%;
+      aspect-ratio: 16/9;
+      background: #000;
+      display: none;
     }
     #messages-container {
       max-height: 300px;
@@ -219,6 +215,27 @@
     [aria-hidden="true"] {
       display: none;
     }
+    #video-controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+      justify-content: center;
+    }
+    #current-video {
+      background: var(--surface);
+      padding: 0.5rem;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .queue-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      background: rgba(0, 0, 0, 0.2);
+      margin-bottom: 0.25rem;
+      border-radius: 8px;
+    }
   </style>
 </head>
 <body>
@@ -257,20 +274,26 @@
           <h2>Collaborative Media Player</h2>
           <div id="media-player">
             <p>Upload a video or paste a media URL to play</p>
-            <div class="coming-soon">
-              <strong>Collaborative Features Coming Soon!</strong><br>
-              <small>- YouTube sync<br>- Queue management<br>- Play/Pause/Seek sync<br>- Host control mode</small>
-            </div>
             <input type="url" id="media-url-input" placeholder="Paste media URL (e.g., .mp4, .webm)" aria-label="Media URL">
             <button id="load-media" aria-label="Load media">Load Media</button>
+          </div>
+          <div id="current-video"></div>
+          <div id="video-container">
+            <video id="video-player" controls></video>
+            <div id="video-controls">
+              <button id="play-pause" aria-label="Play/Pause">Play/Pause</button>
+              <button id="stop" aria-label="Stop">Stop</button>
+              <input type="range" id="seek-slider" min="0" max="100" value="0">
+            </div>
           </div>
           <div class="queue-section">
             <h3>Queue</h3>
             <div id="queue-container"></div>
-            <input type="text" id="media-url-input" placeholder="Paste media URL" aria-label="Media URL">
+            <input type="text" id="new-queue-url" placeholder="Paste media URL" aria-label="Media URL">
             <button id="add-to-queue" aria-label="Add to queue">Add to Queue</button>
             <button id="play-next" aria-label="Play next">Play Next</button>
             <button id="clear-queue" aria-label="Clear queue">Clear Queue</button>
+            <button id="enable-host-control" aria-label="Enable host control">Enable Host Control</button>
           </div>
         </div>
       </div>
@@ -419,6 +442,8 @@
     let messages = [];
     let queue = [];
     let currentVideo = '';
+    let videoElement = document.getElementById('video-player');
+    let isHost = false;
     let isOnline = navigator.onLine;
 
     // Initialize PeerJS
@@ -437,6 +462,14 @@
         peers[conn.peer] = conn;
         updatePeerList();
         addToast("Connected to peer: " + conn.peer);
+      });
+
+      conn.on('data', (data) => {
+        if (data.type === 'player-state') {
+          if (isHost || !isHost) {
+            updateLocalPlayerState(data.state);
+          }
+        }
       });
     });
 
@@ -483,7 +516,8 @@
     document.getElementById('create-room').addEventListener('click', () => {
       roomId = generateRoomId();
       document.getElementById('room-id').textContent = roomId;
-      addToast("New Room Created: " + roomId);
+      isHost = true;
+      addToast("New Room Created: " + roomId + " (You are the host!)");
     });
 
     document.getElementById('join-room').addEventListener('click', () => {
@@ -491,16 +525,40 @@
       if (inputRoomId) {
         roomId = inputRoomId;
         document.getElementById('room-id').textContent = roomId;
+        isHost = false;
         addToast("Joined Room: " + roomId);
       }
     });
 
-    document.getElementById('add-to-queue').addEventListener('click', () => {
+    document.getElementById('load-media').addEventListener('click', () => {
       const url = document.getElementById('media-url-input').value;
       if (url) {
-        addToQueue(url);
-        document.getElementById('media-url-input').value = '';
+        loadMedia(url);
       }
+    });
+
+    document.getElementById('add-to-queue').addEventListener('click', () => {
+      const url = document.getElementById('new-queue-url').value;
+      if (url) {
+        addToQueue(url);
+        document.getElementById('new-queue-url').value = '';
+      }
+    });
+
+    document.getElementById('play-next').addEventListener('click', () => {
+      if (queue.length > 0) {
+        playNext();
+      }
+    });
+
+    document.getElementById('clear-queue').addEventListener('click', () => {
+      queue = [];
+      renderQueue();
+    });
+
+    document.getElementById('enable-host-control').addEventListener('click', () => {
+      isHost = true;
+      addToast("Host control enabled!");
     });
 
     document.getElementById('message-input').addEventListener('keypress', (e) => {
@@ -512,6 +570,129 @@
         }
       }
     });
+
+    // Collaborative Player Logic
+    const playPauseBtn = document.getElementById('play-pause');
+    const stopBtn = document.getElementById('stop');
+    const seekSlider = document.getElementById('seek-slider');
+    
+    playPauseBtn.addEventListener('click', () => {
+      if (videoElement.paused) {
+        videoElement.play();
+        broadcastPlayerState('play');
+      } else {
+        videoElement.pause();
+        broadcastPlayerState('pause');
+      }
+    });
+
+    stopBtn.addEventListener('click', () => {
+      videoElement.pause();
+      videoElement.currentTime = 0;
+      broadcastPlayerState('stop');
+    });
+
+    seekSlider.addEventListener('input', () => {
+      videoElement.currentTime = videoElement.duration * (seekSlider.value / 100);
+      broadcastPlayerState('seek', videoElement.currentTime);
+    });
+
+    videoElement.addEventListener('timeupdate', () => {
+      if (!videoElement.paused) {
+        seekSlider.value = (videoElement.currentTime / videoElement.duration) * 100;
+        broadcastPlayerState('timeupdate', videoElement.currentTime);
+      }
+    });
+
+    videoElement.addEventListener('ended', () => {
+      if (queue.length > 0) {
+        playNext();
+      }
+    });
+
+    function loadMedia(url) {
+      videoElement.src = url;
+      videoElement.style.display = 'block';
+      document.getElementById('media-player').style.display = 'none';
+      currentVideo = url;
+      document.getElementById('current-video').innerHTML = `<strong>Now Playing:</strong> ${url}`;
+      addToast("Media loaded!");
+    }
+
+    function addToQueue(url) {
+      queue.push({ url, votes: 0 });
+      renderQueue();
+      broadcastQueueUpdate();
+    }
+
+    function playNext() {
+      if (queue.length > 0) {
+        const nextVideo = queue.shift();
+        loadMedia(nextVideo.url);
+        renderQueue();
+        broadcastQueueUpdate();
+      }
+    }
+
+    function renderQueue() {
+      const queueContainer = document.getElementById('queue-container');
+      queueContainer.innerHTML = '';
+      queue.forEach((item, index) => {
+        const itemEl = document.createElement('div');
+        itemEl.className = 'queue-item';
+        itemEl.innerHTML = `
+          <span>${index + 1}. ${item.url}</span>
+          <span>${item.votes} votes</span>
+          <button onclick="voteForItem(${index})">👍 Vote</button>
+        `;
+        queueContainer.appendChild(itemEl);
+      });
+    }
+
+    function voteForItem(index) {
+      if (queue[index]) {
+        queue[index].votes++;
+        renderQueue();
+        broadcastQueueUpdate();
+      }
+    }
+
+    function broadcastPlayerState(action, time = null) {
+      const state = {
+        type: 'player-state',
+        action: action,
+        time: time || videoElement.currentTime,
+        currentVideo: currentVideo
+      };
+      Object.keys(peers).forEach(peerId => {
+        peers[peerId].send(state);
+      });
+    }
+
+    function updateLocalPlayerState(state) {
+      if (state.action === 'play') {
+        videoElement.play();
+      } else if (state.action === 'pause') {
+        videoElement.pause();
+      } else if (state.action === 'stop') {
+        videoElement.pause();
+        videoElement.currentTime = 0;
+      } else if (state.action === 'seek') {
+        videoElement.currentTime = state.time;
+        seekSlider.value = (state.time / videoElement.duration) * 100;
+      }
+    }
+
+    function broadcastQueueUpdate() {
+      Object.keys(peers).forEach(peerId => {
+        peers[peerId].send({ type: 'queue-update', queue: queue });
+      });
+    }
+
+    function updateQueueFromPeer(data) {
+      queue = data.queue;
+      renderQueue();
+    }
 
     // Toast function
     function addToast(message) {
@@ -559,40 +740,6 @@
           messageElement.remove();
         }, 1000);
       }, document.getElementById('message-lifetime').value * 1000);
-    }
-
-    // Add to queue
-    function addToQueue(url) {
-      queue.push({ url, votes: 0 });
-      renderQueue();
-    }
-
-    // Render queue
-    function renderQueue() {
-      const queueContainer = document.getElementById('queue-container');
-      queueContainer.innerHTML = '';
-      queue.forEach((item, index) => {
-        const itemEl = document.createElement('div');
-        itemEl.style.display = 'flex';
-        itemEl.style.justifyContent = 'space-between';
-        itemEl.style.alignItems = 'center';
-        itemEl.style.padding = '0.5rem';
-        itemEl.style.background = 'rgba(0, 0, 0, 0.2)';
-        itemEl.innerHTML = `
-          <span>${index + 1}. ${item.url}</span>
-          <span>${item.votes} votes</span>
-          <button onclick="voteForItem(${index})">Vote</button>
-        `;
-        queueContainer.appendChild(itemEl);
-      });
-    }
-
-    // Vote for queue item
-    function voteForItem(index) {
-      if (queue[index]) {
-        queue[index].votes++;
-        renderQueue();
-      }
     }
 
     // Theme changer
