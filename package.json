@@ -1,5 +1,7 @@
 {
   "name": "nexus-mesh",
+  "author": "Nexus Team",
+  "homepage": "https://github.com/nexus/mesh",
   "version": "1.0.0",
   "description": "P2P Collaboration Hub",
   "main": "electron-main.js",
