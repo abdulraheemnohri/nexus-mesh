@@ -80,6 +80,11 @@ const State = {
     },
 
     applyDelta(delta) {
+        if (delta.timestamp < this.data.lastUpdated && delta.path !== 'player.currentTime') {
+            // Only reject if it's not a live seek/time update
+            // return;
+        }
+
         const parts = delta.path.split('.');
         let current = this.data;
         for (let i = 0; i < parts.length - 1; i++) {
@@ -106,6 +111,7 @@ const State = {
             videoID,
             title,
             votes: 0,
+            votedBy: [],
             addedBy,
             addedAt: Date.now()
         };
@@ -113,10 +119,15 @@ const State = {
         this.update('queue', newQueue);
     },
 
-    voteQueue(id, increment) {
+    voteQueue(id, peerId, increment) {
         const newQueue = this.data.queue.map(item => {
             if (item.id === id) {
-                return { ...item, votes: item.votes + increment };
+                if (item.votedBy.includes(peerId)) return item;
+                return {
+                    ...item,
+                    votes: item.votes + increment,
+                    votedBy: [...item.votedBy, peerId]
+                };
             }
             return item;
         }).sort((a, b) => b.votes - a.votes || a.addedAt - b.addedAt);
@@ -132,7 +143,7 @@ const State = {
         const poll = {
             id: Utils.generateID(8),
             question,
-            options: options.map(opt => ({ text: opt, votes: 0, voters: [] })),
+            options: options.map(opt => ({ text: opt, votes: 0 })),
             anonymous,
             expiresAt: Date.now() + (durationMinutes * 60000),
             createdBy,
@@ -148,7 +159,6 @@ const State = {
                 if (poll.votedPeers.includes(peerId)) return poll;
                 const newOptions = [...poll.options];
                 newOptions[optionIndex].votes += 1;
-                newOptions[optionIndex].voters.push(peerId);
                 return { ...poll, options: newOptions, votedPeers: [...poll.votedPeers, peerId] };
             }
             return poll;
@@ -159,24 +169,51 @@ const State = {
     addMessage(text, senderID, senderAvatar, lifetimeSeconds) {
         const msg = {
             id: Utils.generateID(8),
-            text,
+            text: this.profanityFilter(text),
             senderID,
             senderAvatar,
             expiresAt: Date.now() + (lifetimeSeconds * 1000),
-            pinned: false
+            pinned: false,
+            createdAt: Date.now()
         };
-        const newWall = [msg, ...this.data.wall];
+        const newWall = [msg, ...this.data.wall].slice(0, 50); // Keep last 50
         this.update('wall', newWall);
+    },
+
+    togglePinMessage(id) {
+        const newWall = this.data.wall.map(msg => {
+            if (msg.id === id) return { ...msg, pinned: !msg.pinned };
+            return msg;
+        });
+        this.update('wall', newWall);
+    },
+
+    profanityFilter(text) {
+        const words = ['badword1', 'badword2']; // Placeholder
+        let filtered = text;
+        words.forEach(w => {
+            const reg = new RegExp(w, 'gi');
+            filtered = filtered.replace(reg, '***');
+        });
+        return filtered;
     },
 
     cleanupExpired() {
         const now = Date.now();
         let changed = false;
+
         const newWall = this.data.wall.filter(msg => msg.pinned || msg.expiresAt > now);
         if (newWall.length !== this.data.wall.length) {
             this.data.wall = newWall;
             changed = true;
         }
+
+        const newPolls = this.data.polls.filter(poll => poll.expiresAt > (now - 300000)); // Keep expired for 5 min
+        if (newPolls.length !== this.data.polls.length) {
+            this.data.polls = newPolls;
+            changed = true;
+        }
+
         if (changed) {
             this.save();
             this.notify();
@@ -198,8 +235,7 @@ const State = {
                 window.P2P.broadcast({ type: 'full_sync', data: this.data });
             }
         } catch (e) {
-            console.error('Failed to import state:', e);
-            Utils.toast('Import failed: Invalid JSON', 'error');
+            Utils.toast('Import failed', 'error');
         }
     }
 };

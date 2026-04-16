@@ -17,7 +17,13 @@ const P2P = {
 
         return new Promise((resolve, reject) => {
             const idToUse = this.isHost ? this.roomID : null;
-            this.peer = new Peer(idToUse, { debug: 2 });
+            this.peer = new Peer(idToUse, {
+                debug: 1,
+                config: {'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' },
+                    { url: 'stun:stun1.l.google.com:19302' }
+                ]}
+            });
 
             this.peer.on('open', (id) => {
                 this.peerID = id;
@@ -27,6 +33,7 @@ const P2P = {
 
             this.peer.on('connection', (conn) => this.handleConnection(conn));
             this.peer.on('error', (err) => {
+                console.error(err);
                 Utils.toast(`P2P Error: ${err.type}`, 'error');
             });
             this.peer.on('disconnected', () => this.peer.reconnect());
@@ -41,7 +48,7 @@ const P2P = {
     handleConnection(conn) {
         conn.on('open', () => {
             this.connections.set(conn.peer, conn);
-            Utils.toast(`Peer connected: ${conn.peer}`, 'success');
+            Utils.toast(`Peer joined`, 'success');
             if (this.isHost) {
                 conn.send({ type: 'full_sync', data: State.data });
             }
@@ -50,7 +57,7 @@ const P2P = {
         conn.on('data', (data) => this.handleData(data, conn.peer));
         conn.on('close', () => {
             this.connections.delete(conn.peer);
-            Utils.toast(`Peer disconnected: ${conn.peer}`, 'warning');
+            Utils.toast(`Peer left`, 'warning');
         });
     },
 
@@ -62,14 +69,6 @@ const P2P = {
                 break;
             case 'full_sync':
                 State.applyFullSync(data.data);
-                break;
-            case 'chat':
-                State.addMessage(data.text, senderID, data.avatar, data.lifetime);
-                if (this.isHost) this.broadcast(data, [senderID]);
-                break;
-            case 'vote_poll':
-                State.votePoll(data.pollId, data.optionIndex, senderID);
-                if (this.isHost) this.broadcast(data, [senderID]);
                 break;
             case 'player_sync':
                 window.dispatchEvent(new CustomEvent('p2p-player-sync', { detail: data }));
