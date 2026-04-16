@@ -138,6 +138,11 @@
       padding: 0.75rem;
       border-radius: 8px;
       z-index: 1001;
+      animation: slideIn 0.3s ease-out;
+    }
+    @keyframes slideIn {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
     }
     .connection-status {
       display: inline-block;
@@ -163,6 +168,39 @@
       border-radius: 8px;
       font-size: 0.8rem;
     }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface), var(--surface-hover), var(--surface));
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+      border-radius: 8px;
+    }
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .tab-container {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .tab {
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      border-bottom: 3px solid transparent;
+    }
+    .tab.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+    .tab-content {
+      animation: fadeIn 0.3s ease-in;
+    }
+    [aria-hidden="true"] {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -171,61 +209,76 @@
       <h1>Nexus Mesh</h1>
       <div class="room-id-display">
         Room: <span id="room-id">------</span>
-        <span class="connection-status" id="connection-status"></span>
+        <span class="connection-status" id="connection-status" aria-label="Connection status"></span>
       </div>
-      <button id="settings-toggle">⚙️ Settings</button>
+      <button id="settings-toggle" aria-label="Open settings">⚙️ Settings</button>
     </header>
 
-    <main>
-      <!-- Connection Section -->
-      <div class="connection-section">
-        <h2>Connect to Room</h2>
-        <input type="text" id="join-room-id" placeholder="Enter Room ID">
-        <button id="join-room">Join Room</button>
-        <button id="create-room">Create New Room</button>
-        <div class="peer-list" id="peer-list"></div>
-      </div>
+    <div class="tab-container" role="tablist">
+      <button class="tab active" id="tab-connection" role="tab" aria-selected="true" aria-controls="panel-connection">Connection</button>
+      <button class="tab" id="tab-player" role="tab" aria-selected="false" aria-controls="panel-player">Player</button>
+      <button class="tab" id="tab-polls" role="tab" aria-selected="false" aria-controls="panel-polls">Polls</button>
+      <button class="tab" id="tab-wall" role="tab" aria-selected="false" aria-controls="panel-wall">Wall</button>
+    </div>
 
-      <!-- YouTube Player Section -->
-      <div class="youtube-player">
-        <h2>Collaborative YouTube Player</h2>
-        <div id="yt-player"></div>
-        <div class="queue-section">
-          <h3>Queue</h3>
-          <div id="queue-container"></div>
-          <input type="text" id="yt-url-input" placeholder="Paste YouTube URL">
-          <button id="add-to-queue">Add to Queue</button>
-          <button id="play-next">Play Next</button>
-          <button id="clear-queue">Clear Queue</button>
+    <main>
+      <!-- Connection Tab -->
+      <div id="panel-connection" class="tab-content active" role="tabpanel" aria-labelledby="tab-connection">
+        <div class="connection-section">
+          <h2>Connect to Room</h2>
+          <input type="text" id="join-room-id" placeholder="Enter Room ID" aria-label="Room ID">
+          <button id="join-room" aria-label="Join room">Join Room</button>
+          <button id="create-room" aria-label="Create new room">Create New Room</button>
+          <div class="peer-list" id="peer-list" aria-label="Active peers"></div>
         </div>
       </div>
 
-      <!-- Live Polls Section -->
-      <div class="polls-section">
-        <h2>Live Polls</h2>
-        <div id="polls-container"></div>
-        <button id="create-poll">+ New Poll</button>
+      <!-- Player Tab -->
+      <div id="panel-player" class="tab-content" role="tabpanel" aria-labelledby="tab-player" hidden>
+        <div class="youtube-player">
+          <h2>Collaborative YouTube Player</h2>
+          <div id="yt-player"></div>
+          <div class="queue-section">
+            <h3>Queue</h3>
+            <div id="queue-container"></div>
+            <input type="text" id="yt-url-input" placeholder="Paste YouTube URL" aria-label="YouTube URL">
+            <button id="add-to-queue" aria-label="Add to queue">Add to Queue</button>
+            <button id="play-next" aria-label="Play next">Play Next</button>
+            <button id="clear-queue" aria-label="Clear queue">Clear Queue</button>
+          </div>
+        </div>
       </div>
 
-      <!-- Ephemeral Wall Section -->
-      <div class="message-wall">
-        <h2>Ephemeral Wall</h2>
-        <div id="messages-container"></div>
-        <input type="text" id="message-input" placeholder="Type a message...">
-        <div style="margin-top: 0.5rem;">
-          <label>
-            <input type="checkbox" id="profanity-filter"> Enable Profanity Filter
-          </label>
-          <label style="margin-left: 1rem;">
-            <input type="number" id="message-lifetime" value="60" min="10" max="300"> Message Lifetime (seconds)
-          </label>
+      <!-- Polls Tab -->
+      <div id="panel-polls" class="tab-content" role="tabpanel" aria-labelledby="tab-polls" hidden>
+        <div class="polls-section">
+          <h2>Live Polls</h2>
+          <div id="polls-container"></div>
+          <button id="create-poll" aria-label="Create new poll">+ New Poll</button>
+        </div>
+      </div>
+
+      <!-- Wall Tab -->
+      <div id="panel-wall" class="tab-content" role="tabpanel" aria-labelledby="tab-wall" hidden>
+        <div class="message-wall">
+          <h2>Ephemeral Wall</h2>
+          <div id="messages-container"></div>
+          <input type="text" id="message-input" placeholder="Type a message..." aria-label="Message input">
+          <div style="margin-top: 0.5rem;">
+            <label>
+              <input type="checkbox" id="profanity-filter"> Enable Profanity Filter
+            </label>
+            <label style="margin-left: 1rem;">
+              <input type="number" id="message-lifetime" value="60" min="10" max="300"> Message Lifetime (seconds)
+            </label>
+          </div>
         </div>
       </div>
     </main>
   </div>
 
   <!-- Settings Modal -->
-  <div class="settings-modal" id="settings-modal">
+  <div class="settings-modal" id="settings-modal" role="dialog" aria-modal="true">
     <div class="settings-content">
       <h2>Settings</h2>
       <div class="settings-tabs">
@@ -240,7 +293,7 @@
       
       <div class="tab-content active" id="theme-settings">
         <h3>Theme</h3>
-        <select id="theme-select">
+        <select id="theme-select" aria-label="Select theme">
           <option value="dark">Dark</option>
           <option value="light">Light</option>
           <option value="amoled">AMOLED</option>
@@ -260,7 +313,7 @@
 
       <div class="tab-content" id="queue-settings">
         <h3>Queue Settings</h3>
-        <select id="queue-sort">
+        <select id="queue-sort" aria-label="Queue sort method">
           <option value="votes">Sort by Votes + Auto-play</option>
           <option value="time">Sort by Time</option>
           <option value="custom">Custom Order</option>
@@ -316,15 +369,20 @@
         </label>
       </div>
 
-      <button id="close-settings">Close</button>
-      <button id="export-state">Export State</button>
-      <button id="import-state">Import State</button>
-      <button id="clear-all-data">Clear All Data</button>
+      <button id="close-settings" aria-label="Close settings">Close</button>
+      <button id="export-state" aria-label="Export state">Export State</button>
+      <button id="import-state" aria-label="Import state">Import State</button>
+      <button id="clear-all-data" aria-label="Clear all data">Clear All Data</button>
     </div>
   </div>
 
   <!-- Toast Notifications -->
-  <div class="toast" id="toast" style="display: none;"></div>
+  <div class="toast" id="toast" style="display: none;" role="alert"></div>
+
+  <!-- Offline Banner -->
+  <div class="toast" id="offline-banner" style="display: none; background: var(--warning);" role="alert">
+    You are offline. You can still use local features.
+  </div>
 
   <!-- YouTube API -->
   <script>
@@ -356,6 +414,7 @@
     let messages = [];
     let queue = [];
     let currentVideo = '';
+    let isOnline = navigator.onLine;
 
     // Initialize PeerJS
     peer.on('open', (id) => {
@@ -363,6 +422,7 @@
       document.getElementById('room-id').textContent = id;
       console.log("PeerJS ID:", id);
       addToast("Room ID: " + id);
+      updateConnectionStatus('connected');
     });
 
     // Handle incoming connections
@@ -372,6 +432,37 @@
         peers[conn.peer] = conn;
         updatePeerList();
         addToast("Connected to peer: " + conn.peer);
+      });
+    });
+
+    // Handle network status changes
+    window.addEventListener('online', () => {
+      isOnline = true;
+      addToast("You are back online!");
+      document.getElementById('offline-banner').style.display = 'none';
+    });
+    window.addEventListener('offline', () => {
+      isOnline = false;
+      document.getElementById('offline-banner').style.display = 'block';
+    });
+
+    // Tab switching
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.id.replace('tab-', '')).classList.add('active');
+      });
+    });
+
+    // Settings Tabs
+    document.querySelectorAll('.settings-tabs button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.settings-tabs button').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab + '-settings').classList.add('active');
       });
     });
 
@@ -417,16 +508,6 @@
       }
     });
 
-    // Settings Tabs
-    document.querySelectorAll('.settings-tabs button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.settings-tabs button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab + '-settings').classList.add('active');
-      });
-    });
-
     // Toast function
     function addToast(message) {
       const toast = document.getElementById('toast');
@@ -441,6 +522,7 @@
     function updateConnectionStatus(status) {
       const statusEl = document.getElementById('connection-status');
       statusEl.style.background = status === 'connected' ? 'var(--success)' : 'var(--accent)';
+      statusEl.setAttribute('aria-label', status === 'connected' ? 'Connected' : 'Disconnected');
     }
 
     // Peer list update
