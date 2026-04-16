@@ -1,0 +1,6 @@
+{
+  "appId": "com.nexus.mesh",
+  "appName": "Nexus Mesh",
+  "webDir": ".",
+  "bundledWebRuntime": false
+}

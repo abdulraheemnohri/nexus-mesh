@@ -1,762 +1,139 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nexus Mesh - P2P Collaboration Hub</title>
-  <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
-  <style>
-    :root {
-      --bg: #0f0f13;
-      --surface: rgba(26, 26, 32, 0.85);
-      --surface-hover: rgba(36, 36, 42, 0.9);
-      --primary: #00e5ff;
-      --accent: #ff0055;
-      --success: #00ff88;
-      --warning: #ffaa00;
-      --text: #e8e8f0;
-      --text-muted: #8a8a9a;
-      --border: rgba(255, 255, 255, 0.08);
-      --glass: blur(16px);
-    }
-    body {
-      font-family: 'Segoe UI', system-ui, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      margin: 0;
-      padding: 0;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      backdrop-filter: var(--glass);
-    }
-    .app-container {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 1rem;
-      width: 100%;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      padding: 0.5rem;
-      background: var(--surface);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-    }
-    #room-id {
-      font-family: monospace;
-      color: var(--primary);
-    }
-    .youtube-player, .polls-section, .message-wall, .queue-section, .settings-modal {
-      background: var(--surface);
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
-    #media-player {
-      background: #000;
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-      width: 100%;
-      aspect-ratio: 16/9;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      justify-content: center;
-      align-items: center;
-      color: #888;
-      font-size: 1.2rem;
-      text-align: center;
-    }
-    #video-container {
-      width: 100%;
-      aspect-ratio: 16/9;
-      background: #000;
-      display: none;
-    }
-    #video-player {
-      width: 100%;
-      height: 100%;
-    }
-    #messages-container {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-bottom: 0.5rem;
-    }
-    .message {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 0.5rem;
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-      animation: fadeIn 0.3s ease-in;
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-    .settings-modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      display: none;
-      z-index: 1000;
-      justify-content: center;
-      align-items: center;
-    }
-    .settings-content {
-      background: var(--surface);
-      padding: 1rem;
-      border-radius: 12px;
-      max-width: 500px;
-      width: 100%;
-    }
-    button {
-      background: var(--primary);
-      color: var(--bg);
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      margin: 0.25rem;
-    }
-    input {
-      background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.5rem;
-      border-radius: 8px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .settings-tabs button.active { background: var(--accent); }
-    .poll-option {
-      display: flex;
-      align-items: center;
-      margin: 0.5rem 0;
-    }
-    .poll-bar {
-      height: 20px;
-      background: var(--surface-hover);
-      border-radius: 4px;
-      margin: 0.25rem 0;
-    }
-    .toast {
-      position: fixed;
-      top: 1rem;
-      right: 1rem;
-      background: var(--surface);
-      padding: 0.75rem;
-      border-radius: 8px;
-      z-index: 1001;
-      animation: slideIn 0.3s ease-out;
-    }
-    @keyframes slideIn {
-      from { transform: translateX(100%); }
-      to { transform: translateX(0); }
-    }
-    .connection-status {
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: #ff0055;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 var(--accent); }
-      70% { box-shadow: 0 0 0 10px transparent; }
-      100% { box-shadow: 0 0 0 0 transparent; }
-    }
-    .peer-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-    }
-    .peer-card {
-      background: rgba(0, 0, 0, 0.3);
-      padding: 0.5rem;
-      border-radius: 8px;
-      font-size: 0.8rem;
-    }
-    .skeleton {
-      background: linear-gradient(90deg, var(--surface), var(--surface-hover), var(--surface));
-      background-size: 200% 100%;
-      animation: loading 1.5s infinite;
-      border-radius: 8px;
-    }
-    @keyframes loading {
-      0% { background-position: 200% 0; }
-      100% { background-position: -200% 0; }
-    }
-    .tab-container {
-      display: flex;
-      border-bottom: 1px solid var(--border);
-      margin-bottom: 1rem;
-    }
-    .tab {
-      padding: 0.75rem 1.5rem;
-      cursor: pointer;
-      border: none;
-      background: none;
-      color: var(--text-muted);
-      border-bottom: 3px solid transparent;
-    }
-    .tab.active {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
-    }
-    .tab-content {
-      animation: fadeIn 0.3s ease-in;
-    }
-    [aria-hidden="true"] {
-      display: none;
-    }
-    #video-controls {
-      display: flex;
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-      justify-content: center;
-      background: var(--surface);
-      padding: 0.5rem;
-      border-radius: 8px;
-    }
-    #current-video {
-      background: var(--surface);
-      padding: 0.5rem;
-      border-radius: 8px;
-      margin-bottom: 0.5rem;
-    }
-    .queue-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem;
-      background: rgba(0, 0, 0, 0.2);
-      margin-bottom: 0.25rem;
-      border-radius: 8px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEXUS MESH | P2P Collaboration Hub</title>
+    <link rel="stylesheet" href="css/design-system.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- CDNs -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-  <div class="app-container">
-    <header>
-      <h1>Nexus Mesh</h1>
-      <div class="room-id-display">
-        Room: <span id="room-id">------</span>
-        <span class="connection-status" id="connection-status" aria-label="Connection status"></span>
-      </div>
-      <button id="settings-toggle" aria-label="Open settings">⚙️ Settings</button>
-    </header>
+    <!-- Setup Screen -->
+    <div id="setup-screen" class="container" style="height: 100vh; align-items: center; justify-content: center; display: flex; flex-direction: column;">
+        <div class="card" style="text-align: center; max-width: 400px; width: 100%;">
+            <h1 style="margin-bottom: 1rem; color: var(--primary);">NEXUS MESH</h1>
+            <p style="margin-bottom: 2rem; color: var(--text-muted);">Zero-backend P2P Real-Time Hub</p>
 
-    <div class="tab-container" role="tablist">
-      <button class="tab active" id="tab-connection" role="tab" aria-selected="true" aria-controls="panel-connection">Connection</button>
-      <button class="tab" id="tab-player" role="tab" aria-selected="false" aria-controls="panel-player">Player</button>
-      <button class="tab" id="tab-polls" role="tab" aria-selected="false" aria-controls="panel-polls">Polls</button>
-      <button class="tab" id="tab-wall" role="tab" aria-selected="false" aria-controls="panel-wall">Wall</button>
-    </div>
+            <button id="create-room" style="width: 100%; margin-bottom: 1rem;">Create New Room</button>
 
-    <main>
-      <!-- Connection Tab -->
-      <div id="panel-connection" class="tab-content active" role="tabpanel" aria-labelledby="tab-connection">
-        <div class="connection-section">
-          <h2>Connect to Room</h2>
-          <input type="text" id="join-room-id" placeholder="Enter Room ID" aria-label="Room ID">
-          <button id="join-room" aria-label="Join room">Join Room</button>
-          <button id="create-room" aria-label="Create new room">Create New Room</button>
-          <div class="peer-list" id="peer-list" aria-label="Active peers"></div>
-        </div>
-      </div>
-
-      <!-- Player Tab -->
-      <div id="panel-player" class="tab-content" role="tabpanel" aria-labelledby="tab-player" hidden>
-        <div class="youtube-player">
-          <h2>Collaborative Media Player</h2>
-          <div id="media-player">
-            <p>Upload a video or paste a media URL to play</p>
-            <input type="url" id="media-url-input" placeholder="Paste media URL (e.g., .mp4, .webm)" aria-label="Media URL">
-            <button id="load-media" aria-label="Load media">Load Media</button>
-          </div>
-          <div id="current-video"></div>
-          <div id="video-container">
-            <video id="video-player" controls></video>
-            <div id="video-controls">
-              <button id="play-pause" aria-label="Play/Pause">Play/Pause</button>
-              <button id="stop" aria-label="Stop">Stop</button>
-              <input type="range" id="seek-slider" min="0" max="100" value="0">
+            <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                <input type="text" id="join-id" placeholder="Enter Room ID" style="text-transform: uppercase;">
+                <button id="join-room">Join</button>
             </div>
-          </div>
-          <div class="queue-section">
-            <h3>Queue</h3>
-            <div id="queue-container"></div>
-            <input type="text" id="new-queue-url" placeholder="Paste media URL" aria-label="Media URL">
-            <button id="add-to-queue" aria-label="Add to queue">Add to Queue</button>
-            <button id="play-next" aria-label="Play next">Play Next</button>
-            <button id="clear-queue" aria-label="Clear queue">Clear Queue</button>
-            <button id="enable-host-control" aria-label="Enable host control">Enable Host Control</button>
-          </div>
         </div>
-      </div>
-
-      <!-- Polls Tab -->
-      <div id="panel-polls" class="tab-content" role="tabpanel" aria-labelledby="tab-polls" hidden>
-        <div class="polls-section">
-          <h2>Live Polls</h2>
-          <div id="polls-container"></div>
-          <button id="create-poll" aria-label="Create new poll">+ New Poll</button>
-        </div>
-      </div>
-
-      <!-- Wall Tab -->
-      <div id="panel-wall" class="tab-content" role="tabpanel" aria-labelledby="tab-wall" hidden>
-        <div class="message-wall">
-          <h2>Ephemeral Wall</h2>
-          <div id="messages-container"></div>
-          <input type="text" id="message-input" placeholder="Type a message..." aria-label="Message input">
-          <div style="margin-top: 0.5rem;">
-            <label>
-              <input type="checkbox" id="profanity-filter"> Enable Profanity Filter
-            </label>
-            <label style="margin-left: 1rem;">
-              <input type="number" id="message-lifetime" value="60" min="10" max="300"> Message Lifetime (seconds)
-            </label>
-          </div>
-        </div>
-      </div>
-    </main>
-  </div>
-
-  <!-- Settings Modal -->
-  <div class="settings-modal" id="settings-modal" role="dialog" aria-modal="true">
-    <div class="settings-content">
-      <h2>Settings</h2>
-      <div class="settings-tabs">
-        <button class="active" data-tab="theme">Theme</button>
-        <button data-tab="connection">Connection</button>
-        <button data-tab="queue">Queue</button>
-        <button data-tab="polls">Polls</button>
-        <button data-tab="wall">Wall</button>
-        <button data-tab="privacy">Privacy</button>
-        <button data-tab="accessibility">Accessibility</button>
-      </div>
-      
-      <div class="tab-content active" id="theme-settings">
-        <h3>Theme</h3>
-        <select id="theme-select" aria-label="Select theme">
-          <option value="dark">Dark</option>
-          <option value="light">Light</option>
-          <option value="amoled">AMOLED</option>
-          <option value="system">System</option>
-        </select>
-      </div>
-
-      <div class="tab-content" id="connection-settings">
-        <h3>Connection Settings</h3>
-        <label>
-          <input type="checkbox" id="auto-accept-peers" checked> Auto-accept peers
-        </label><br>
-        <label>
-          <input type="number" id="max-peers" value="10" min="1" max="50"> Max peers
-        </label>
-      </div>
-
-      <div class="tab-content" id="queue-settings">
-        <h3>Queue Settings</h3>
-        <select id="queue-sort" aria-label="Queue sort method">
-          <option value="votes">Sort by Votes + Auto-play</option>
-          <option value="time">Sort by Time</option>
-          <option value="custom">Custom Order</option>
-        </select><br>
-        <label>
-          <input type="checkbox" id="queue-loop"> Loop queue
-        </label>
-      </div>
-
-      <div class="tab-content" id="polls-settings">
-        <h3>Poll Settings</h3>
-        <label>
-          <input type="number" id="max-poll-options" value="4" min="2" max="6"> Max options per poll
-        </label><br>
-        <label>
-          <input type="checkbox" id="anonymous-polls"> Allow anonymous voting
-        </label><br>
-        <label>
-          <input type="number" id="poll-expiry" value="300" min="30" max="3600"> Poll expiry (seconds)
-        </label>
-      </div>
-
-      <div class="tab-content" id="wall-settings">
-        <h3>Wall Settings</h3>
-        <label>
-          <input type="number" id="wall-lifetime" value="60" min="10" max="300"> Message lifetime (seconds)
-        </label><br>
-        <label>
-          <input type="checkbox" id="show-timestamps"> Show timestamps
-        </label>
-      </div>
-
-      <div class="tab-content" id="privacy-settings">
-        <h3>Privacy Settings</h3>
-        <label>
-          <input type="checkbox" id="clear-on-exit"> Clear data on exit
-        </label><br>
-        <label>
-          <input type="checkbox" id="local-only"> Local-only mode (no P2P)
-        </label>
-      </div>
-
-      <div class="tab-content" id="accessibility-settings">
-        <h3>Accessibility</h3>
-        <label>
-          <input type="range" id="font-scale" min="80" max="150" value="100"> Font scale (%)
-        </label><br>
-        <label>
-          <input type="checkbox" id="high-contrast"> High contrast mode
-        </label><br>
-        <label>
-          <input type="checkbox" id="reduced-motion"> Reduce motion
-        </label>
-      </div>
-
-      <button id="close-settings" aria-label="Close settings">Close</button>
-      <button id="export-state" aria-label="Export state">Export State</button>
-      <button id="import-state" aria-label="Import state">Import State</button>
-      <button id="clear-all-data" aria-label="Clear all data">Clear All Data</button>
     </div>
-  </div>
 
-  <!-- Toast Notifications -->
-  <div class="toast" id="toast" style="display: none;" role="alert"></div>
+    <!-- App Screen -->
+    <div id="app-screen" class="hide">
+        <div class="status-hud">
+            <span id="display-room-id" style="font-weight: bold; color: var(--primary); font-family: monospace;">------</span>
+            <div id="conn-status" class="offline"></div><img id="room-qr" style="width: 32px; height: 32px; cursor: pointer;" onclick="window.open(this.src)">
+            <button id="settings-toggle" style="padding: 0.5rem; background: none; color: var(--text);">⚙️</button>
+        </div>
 
-  <!-- Offline Banner -->
-  <div class="toast" id="offline-banner" style="display: none; background: var(--warning);" role="alert">
-    You are offline. You can still use local features.
-  </div>
+        <div class="container">
+            <!-- Left Column: Player & Queue -->
+            <div class="player-section">
+                <div id="youtube-player-container" class="card">
+                    <div id="youtube-player"></div>
+                </div>
 
-  <!-- PeerJS & Core Logic -->
-  <script>
-    const peer = new Peer();
-    let roomId = generateRoomId();
-    let peers = {};
-    let polls = [];
-    let messages = [];
-    let queue = [];
-    let currentVideo = '';
-    let videoElement = document.getElementById('video-player');
-    let isHost = false;
-    let isOnline = navigator.onLine;
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <input type="text" id="video-url" placeholder="Paste YouTube URL here...">
+                        <button id="add-to-queue">Add</button>
+                    </div>
+                    <div id="queue-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <!-- Queue items rendered here -->
+                    </div>
+                </div>
+            </div>
 
-    // Initialize PeerJS
-    peer.on('open', (id) => {
-      roomId = id;
-      document.getElementById('room-id').textContent = id;
-      console.log("PeerJS ID:", id);
-      addToast("Room ID: " + id);
-      updateConnectionStatus('connected');
-    });
+            <!-- Right Column: Wall & Polls -->
+            <div class="wall-section card">
+                <h3 style="margin-bottom: 1rem;">Message Wall</h3>
+                <div id="wall-messages">
+                    <!-- Messages rendered here -->
+                </div>
+                <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                    <input type="text" id="wall-input" placeholder="Type a message...">
+                    <button id="send-message">Send</button>
+                </div>
+            </div>
 
-    // Handle incoming connections
-    peer.on('connection', (conn) => {
-      conn.on('open', () => {
-        console.log("Connected to:", conn.peer);
-        peers[conn.peer] = conn;
-        updatePeerList();
-        addToast("Connected to peer: " + conn.peer);
-      });
+            <div class="polls-section">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h3>Live Polls</h3>
+                    <button id="create-poll-btn" style="padding: 0.3rem 0.8rem; font-size: 0.8rem;">+ New Poll</button>
+                </div>
+                <div id="polls-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- Polls rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
 
-      conn.on('data', (data) => {
-        if (data.type === 'player-state') {
-          if (isHost || !isHost) {
-            updateLocalPlayerState(data.state);
-          }
-        }
-      });
-    });
+    <!-- Settings Panel -->
+    <div id="settings-panel">
+        <h2 style="margin-bottom: 1.5rem;">Settings</h2>
 
-    // Handle network status changes
-    window.addEventListener('online', () => {
-      isOnline = true;
-      addToast("You are back online!");
-      document.getElementById('offline-banner').style.display = 'none';
-    });
-    window.addEventListener('offline', () => {
-      isOnline = false;
-      document.getElementById('offline-banner').style.display = 'block';
-    });
+        <div style="margin-bottom: 1.5rem;">
+            <label>Theme</label>
+            <select id="setting-theme" onchange="window.Settings.update('theme', this.value)" style="width: 100%; padding: 0.5rem; margin-top: 0.5rem;">
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+            </select>
+        </div>
 
-    // Tab switching
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
-        document.getElementById('panel-' + tab.id.replace('tab-', '')).classList.add('active');
-      });
-    });
+        <div style="margin-bottom: 1.5rem;">
+            <label>Message Lifetime (seconds)</label>
+            <input type="number" id="setting-msg-life" value="60" onchange="window.Settings.update('msgLifetime', parseInt(this.value))">
+        </div>
 
-    // Settings Tabs
-    document.querySelectorAll('.settings-tabs button').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.settings-tabs button').forEach(b => b.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById(btn.dataset.tab + '-settings').classList.add('active');
-      });
-    });
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 2rem;">
+            <button id="export-data">Export State (JSON)</button>
+            <div style="position: relative;">
+                <button style="width: 100%;">Import State</button>
+                <input type="file" id="import-data" style="position: absolute; top: 0; left: 0; opacity: 0; cursor: pointer;">
+            </div>
+        </div>
 
-    // UI Event Listeners
-    document.getElementById('settings-toggle').addEventListener('click', () => {
-      document.getElementById('settings-modal').style.display = 'flex';
-    });
+        <button onclick="document.getElementById('settings-panel').classList.remove('show')" style="width: 100%; background: var(--text-muted);">Close</button>
+    </div>
 
-    document.getElementById('close-settings').addEventListener('click', () => {
-      document.getElementById('settings-modal').style.display = 'none';
-    });
+    <!-- Poll Modal -->
+    <div id="poll-modal" class="hide" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center;">
+        <div class="card" style="max-width: 400px; width: 90%;">
+            <h3>Create Poll</h3>
+            <input type="text" id="poll-q" placeholder="Question" style="margin: 1rem 0;">
+            <input type="text" id="poll-o1" placeholder="Option 1" style="margin-bottom: 0.5rem;">
+            <input type="text" id="poll-o2" placeholder="Option 2" style="margin-bottom: 0.5rem;">
+            <input type="text" id="poll-o3" placeholder="Option 3 (optional)" style="margin-bottom: 0.5rem;">
+            <input type="text" id="poll-o4" placeholder="Option 4 (optional)" style="margin-bottom: 1rem;">
+            <div style="display: flex; gap: 0.5rem;">
+                <button id="submit-poll" style="flex: 1;">Create</button>
+                <button onclick="document.getElementById('poll-modal').classList.add('hide')" style="flex: 1; background: var(--text-muted);">Cancel</button>
+            </div>
+        </div>
+    </div>
 
-    document.getElementById('create-room').addEventListener('click', () => {
-      roomId = generateRoomId();
-      document.getElementById('room-id').textContent = roomId;
-      isHost = true;
-      addToast("New Room Created: " + roomId + " (You are the host!)");
-    });
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
 
-    document.getElementById('join-room').addEventListener('click', () => {
-      const inputRoomId = document.getElementById('join-room-id').value;
-      if (inputRoomId) {
-        roomId = inputRoomId;
-        document.getElementById('room-id').textContent = roomId;
-        isHost = false;
-        addToast("Joined Room: " + roomId);
-      }
-    });
+    <!-- App Entry -->
+    <script type="module">
+        import UI from './js/ui.js';
+        import Settings from './js/settings.js';
 
-    document.getElementById('load-media').addEventListener('click', () => {
-      const url = document.getElementById('media-url-input').value;
-      if (url) {
-        loadMedia(url);
-      }
-    });
+        // Initialize
+        Settings.init();
+        UI.init();
 
-    document.getElementById('add-to-queue').addEventListener('click', () => {
-      const url = document.getElementById('new-queue-url').value;
-      if (url) {
-        addToQueue(url);
-        document.getElementById('new-queue-url').value = '';
-      }
-    });
-
-    document.getElementById('play-next').addEventListener('click', () => {
-      if (queue.length > 0) {
-        playNext();
-      }
-    });
-
-    document.getElementById('clear-queue').addEventListener('click', () => {
-      queue = [];
-      renderQueue();
-    });
-
-    document.getElementById('enable-host-control').addEventListener('click', () => {
-      isHost = true;
-      addToast("Host control enabled!");
-    });
-
-    document.getElementById('message-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        const message = e.target.value;
-        if (message.trim()) {
-          addMessage(message);
-          e.target.value = '';
-        }
-      }
-    });
-
-    // Collaborative Player Logic
-    const playPauseBtn = document.getElementById('play-pause');
-    const stopBtn = document.getElementById('stop');
-    const seekSlider = document.getElementById('seek-slider');
-    
-    playPauseBtn.addEventListener('click', () => {
-      if (videoElement.paused) {
-        videoElement.play();
-        broadcastPlayerState('play');
-      } else {
-        videoElement.pause();
-        broadcastPlayerState('pause');
-      }
-    });
-
-    stopBtn.addEventListener('click', () => {
-      videoElement.pause();
-      videoElement.currentTime = 0;
-      broadcastPlayerState('stop');
-    });
-
-    seekSlider.addEventListener('input', () => {
-      videoElement.currentTime = videoElement.duration * (seekSlider.value / 100);
-      broadcastPlayerState('seek', videoElement.currentTime);
-    });
-
-    videoElement.addEventListener('timeupdate', () => {
-      if (!videoElement.paused) {
-        seekSlider.value = (videoElement.currentTime / videoElement.duration) * 100;
-        broadcastPlayerState('timeupdate', videoElement.currentTime);
-      }
-    });
-
-    videoElement.addEventListener('ended', () => {
-      if (queue.length > 0) {
-        playNext();
-      }
-    });
-
-    function loadMedia(url) {
-      videoElement.src = url;
-      videoElement.style.display = 'block';
-      document.getElementById('media-player').style.display = 'none';
-      currentVideo = url;
-      document.getElementById('current-video').innerHTML = `<strong>Now Playing:</strong> ${url}`;
-      addToast("Media loaded!");
-    }
-
-    function addToQueue(url) {
-      queue.push({ url, votes: 0 });
-      renderQueue();
-      broadcastQueueUpdate();
-    }
-
-    function playNext() {
-      if (queue.length > 0) {
-        const nextVideo = queue.shift();
-        loadMedia(nextVideo.url);
-        renderQueue();
-        broadcastQueueUpdate();
-      }
-    }
-
-    function renderQueue() {
-      const queueContainer = document.getElementById('queue-container');
-      queueContainer.innerHTML = '';
-      queue.forEach((item, index) => {
-        const itemEl = document.createElement('div');
-        itemEl.className = 'queue-item';
-        itemEl.innerHTML = `
-          <span>${index + 1}. ${item.url}</span>
-          <span>${item.votes} votes</span>
-          <button onclick="voteForItem(${index})">👍 Vote</button>
-        `;
-        queueContainer.appendChild(itemEl);
-      });
-    }
-
-    function voteForItem(index) {
-      if (queue[index]) {
-        queue[index].votes++;
-        renderQueue();
-        broadcastQueueUpdate();
-      }
-    }
-
-    function broadcastPlayerState(action, time = null) {
-      const state = {
-        type: 'player-state',
-        action: action,
-        time: time || videoElement.currentTime,
-        currentVideo: currentVideo
-      };
-      Object.keys(peers).forEach(peerId => {
-        peers[peerId].send(state);
-      });
-    }
-
-    function updateLocalPlayerState(state) {
-      if (state.action === 'play') {
-        videoElement.play();
-      } else if (state.action === 'pause') {
-        videoElement.pause();
-      } else if (state.action === 'stop') {
-        videoElement.pause();
-        videoElement.currentTime = 0;
-      } else if (state.action === 'seek') {
-        videoElement.currentTime = state.time;
-        seekSlider.value = (state.time / videoElement.duration) * 100;
-      }
-    }
-
-    function broadcastQueueUpdate() {
-      Object.keys(peers).forEach(peerId => {
-        peers[peerId].send({ type: 'queue-update', queue: queue });
-      });
-    }
-
-    function updateQueueFromPeer(data) {
-      queue = data.queue;
-      renderQueue();
-    }
-
-    // Toast function
-    function addToast(message) {
-      const toast = document.getElementById('toast');
-      toast.textContent = message;
-      toast.style.display = 'block';
-      setTimeout(() => {
-        toast.style.display = 'none';
-      }, 3000);
-    }
-
-    // Connection status
-    function updateConnectionStatus(status) {
-      const statusEl = document.getElementById('connection-status');
-      statusEl.style.background = status === 'connected' ? 'var(--success)' : 'var(--accent)';
-      statusEl.setAttribute('aria-label', status === 'connected' ? 'Connected' : 'Disconnected');
-    }
-
-    // Peer list update
-    function updatePeerList() {
-      const peerListEl = document.getElementById('peer-list');
-      peerListEl.innerHTML = '';
-      Object.keys(peers).forEach(peerId => {
-        const peerCard = document.createElement('div');
-        peerCard.className = 'peer-card';
-        peerCard.textContent = peerId;
-        peerListEl.appendChild(peerCard);
-      });
-    }
-
-    // Generate random 6-character room ID
-    function generateRoomId() {
-      return Math.random().toString(36).substring(2, 8).toUpperCase();
-    }
-
-    // Add message to wall
-    function addMessage(text) {
-      const messageElement = document.createElement('div');
-      messageElement.className = 'message';
-      messageElement.textContent = text;
-      document.getElementById('messages-container').appendChild(messageElement);
-      setTimeout(() => {
-        messageElement.style.opacity = '0.5';
-        setTimeout(() => {
-          messageElement.remove();
-        }, 1000);
-      }, document.getElementById('message-lifetime').value * 1000);
-    }
-
-    // Theme changer
-    document.getElementById('theme-select').addEventListener('change', (e) => {
-      document.documentElement.style.setProperty('--bg', e.target.value === 'light' ? '#ffffff' : '#0f0f13');
-      document.documentElement.style.setProperty('--surface', e.target.value === 'light' ? '#f5f5f5' : 'rgba(26, 26, 32, 0.85)');
-      document.documentElement.style.setProperty('--text', e.target.value === 'light' ? '#000000' : '#e8e8f0');
-    });
-  </script>
+        // Expose to window for inline handlers
+        window.Settings = Settings;
+    </script>
 </body>
 </html>
