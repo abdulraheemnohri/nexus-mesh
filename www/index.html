@@ -20,6 +20,7 @@
             <p class="subtitle">Decentralized Collaboration Platform</p>
 
             <button id="create-room" class="primary-btn large" style="width: 100%;">🚀 Create Private Room</button>
+            <button id="scan-mesh" class="secondary-btn" style="width: 100%; margin-top: 1rem;">📡 Scan Local Mesh</button>
 
             <div class="separator">
                 <span>OR JOIN SESSION</span>
@@ -37,6 +38,7 @@
             <div class="brand">
                 <span class="logo gradient-text">NEXUS</span>
                 <div class="session-info">
+                    <span id="brain-status" style="font-size:0.6rem; margin-right:1rem; opacity:0.7;">AUTONOMOUS: STARTUP</span>
                     <div id="conn-status" class="connection-dot offline"></div>
                     <span id="display-room-id">------</span>
                 </div>
@@ -98,6 +100,17 @@
                     <section class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
                         <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 1.5rem;">Network Topology</h3>
                         <div id="topology-viz" class="topology-box"></div>
+                    <div id="evolution-hud" style="margin-top:1rem; padding:0.8rem; background:rgba(0,242,255,0.05); border:1px solid var(--primary); border-radius:8px; font-size:0.65rem;">
+                        <p style="color:var(--primary); font-weight:700; margin-bottom:0.4rem; letter-spacing:0.05em;">EVOLUTION ENGINE ACTIVE</p>
+                        <div id="active-strategies" style="color:var(--text-muted);">Observing Network Patterns...</div>
+                    </div>
+                    <div id="mesh-diagnostics" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem; font-size:0.6rem; color:var(--text-muted);">
+                        <span>UPTIME: <b id="diag-uptime" style="color:var(--primary);">0s</b></span>
+                        <span>TRAFFIC: <b id="diag-traffic" style="color:var(--primary);">0kb</b></span>
+                        <span>STABILITY: <b id="diag-stability" style="color:var(--success);">100%</b></span>
+                        <span>PROTOCOL: <b style="color:var(--primary);">NXM-V4</b></span>
+                    </div>
+                    <div id="system-log" style="margin-bottom:1rem;"></div>
                     <div id="peer-list" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;"></div>
                     </section>
                 </div>

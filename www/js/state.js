@@ -1,19 +1,24 @@
 /**
- * NEXUS MESH - Secure Mesh State Manager
+ * NEXUS MESH V5 - Evolving Distributed State
  */
 import Utils from './utils.js';
 import Settings from './settings.js';
+import Brain from './brain.js';
 
 const State = {
     roomID: null,
     isHost: false,
 
     data: {
-        lastUpdated: Date.now(),
+        v: 0,
         player: { videoID: null, state: -1, currentTime: 0, hostOnly: false },
         queue: [],
         polls: [],
-        wall: []
+        wall: [],
+        knowledge: {
+            bestRoutes: [],
+            blacklistedPeers: []
+        }
     },
 
     listeners: [],
@@ -24,9 +29,6 @@ const State = {
         const saved = await Utils.db.get(`state_${roomID}`);
         if (saved) this.data = saved;
         this.notify();
-        setInterval(() => {
-            if (this.isHost && window.P2P) window.P2P.broadcast({ type: 'full_sync', data: this.data });
-        }, 30000);
     },
 
     subscribe(cb) { this.listeners.push(cb); },
@@ -38,35 +40,33 @@ const State = {
         let cur = this.data;
         for (let i = 0; i < parts.length - 1; i++) cur = cur[parts[i]];
         cur[parts[parts.length - 1]] = value;
-        this.data.lastUpdated = Date.now();
+        this.data.v++;
         this.save(); this.notify();
-        if (broadcast && window.P2P) window.P2P.broadcast({ type: 'delta', path, value, timestamp: this.data.lastUpdated });
+        if (broadcast && window.P2P) window.P2P.broadcast({ type: 'delta', path, value, v: this.data.v });
     },
 
     applyDelta(delta) {
+        if (delta.v <= this.data.v && delta.path !== 'player.currentTime') return;
         const parts = delta.path.split('.');
         let cur = this.data;
         for (let i = 0; i < parts.length - 1; i++) cur = cur[parts[i]];
         cur[parts[parts.length - 1]] = delta.value;
-        this.data.lastUpdated = Math.max(this.data.lastUpdated, delta.timestamp);
+        this.data.v = Math.max(this.data.v, delta.v);
         this.save(); this.notify();
     },
 
     applyFullSync(newData) {
-        if (newData.lastUpdated > this.data.lastUpdated) {
+        if (newData.v > this.data.v) {
             this.data = newData;
             this.save(); this.notify();
         }
     },
 
-    encrypt(text) {
-        if (!Settings.current.e2e) return text;
-        return btoa(text).split('').reverse().join('');
-    },
-
-    decrypt(text) {
-        if (!Settings.current.e2e) return text;
-        try { return atob(text.split('').reverse().join('')); } catch(e) { return text; }
+    // V5 Feature: Knowledge Sharing
+    shareKnowledge(type, payload) {
+        const newK = { ...this.data.knowledge };
+        if (type === 'route') newK.bestRoutes.push(payload);
+        this.update('knowledge', newK);
     },
 
     addToQueue(videoID, title, addedBy) {
@@ -101,8 +101,21 @@ const State = {
     },
 
     addMessage(text, sid, ava, life) {
-        const msg = { id: Utils.generateID(8), text: this.encrypt(text), senderID: sid, senderAvatar: ava, expiresAt: Date.now()+(life*1000), createdAt: Date.now() };
+        window.msgCount = (window.msgCount || 0) + 1;
+        setTimeout(() => window.msgCount--, 10000);
+        const encText = this.obfuscate(text);
+        const msg = { id: Utils.generateID(8), text: encText, senderID: sid, senderAvatar: ava, expiresAt: Date.now()+(life*1000), createdAt: Date.now() };
         this.update('wall', [msg, ...this.data.wall].slice(0, 50));
+    },
+
+    obfuscate(text) {
+        if (!Settings.current.e2e) return text;
+        return btoa(text).split('').reverse().join('');
+    },
+
+    deobfuscate(text) {
+        if (!Settings.current.e2e) return text;
+        try { return atob(text.split('').reverse().join('')); } catch(e) { return text; }
     },
 
     cleanupExpired() {
@@ -115,20 +128,12 @@ const State = {
         if (c) { this.save(); this.notify(); }
     },
 
-    exportPolls(pid) {
-        const p = this.data.polls.find(i => i.id === pid);
-        if (!p) return "";
-        let csv = "Option,Votes\n";
-        p.options.forEach(o => csv += `"${o.text}",${o.votes}\n`);
-        return csv;
-    },
-
     exportState() { return JSON.stringify(this.data); },
 
     async importState(json) {
         try {
             this.data = JSON.parse(json);
-            this.data.lastUpdated = Date.now();
+            this.data.v = Date.now();
             await this.save(); this.notify();
             if (window.P2P) window.P2P.broadcast({ type: 'full_sync', data: this.data });
         } catch (e) { Utils.toast('Import failed', 'error'); }
@@ -137,8 +142,10 @@ const State = {
 
 window.State = State;
 State.downloadPoll = (id) => {
-    const csv = State.exportPolls(id);
-    if (!csv) return;
+    const p = State.data.polls.find(i => i.id === id);
+    if (!p) return;
+    let csv = "Option,Votes\n";
+    p.options.forEach(o => csv += `"${o.text}",${o.votes}\n`);
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);

@@ -1,40 +1,83 @@
+import Evolution from './evolution.js';
 /**
- * NEXUS MESH - Full-Mesh UI/UX Layer
+ * NEXUS MESH V4 - Autonomous UI Layer
  */
 import Utils from './utils.js';
 import State from './state.js';
 import P2P from './core.js';
 import Settings from './settings.js';
+import Brain from './brain.js';
 
 const UI = {
     player: null,
     isPlayerReady: false,
     syncInProgress: false,
     audioCtx: null,
+    totalTraffic: 0,
+    startTime: Date.now(),
 
     init() {
         this.setupEventListeners();
         this.setupYouTubeAPI();
         this.setupMobileTabs();
         this.setupKeyboardNav();
+        this.setupNetworkStatus();
 
         State.subscribe((data) => this.render(data));
         this.render(State.data);
 
         const params = new URLSearchParams(window.location.search);
         const room = params.get('room');
-        if (room) {
-            document.getElementById('join-id').value = room;
-            this.initRoom(room);
-        }
+        if (room) { document.getElementById('join-id').value = room; this.initRoom(room); }
 
         setInterval(() => {
             State.cleanupExpired();
             this.updateTimestamps();
             this.updateTopology();
+            this.updateBrainStatus();
+            this.updateDiagnostics(); this.updateEvolutionHUD();
         }, 1000);
 
         window.addEventListener('mesh-updated', () => this.updateTopology());
+        window.addEventListener('mesh-log', (e) => this.log(e.detail));
+    },
+
+    log(msg) {
+        const log = document.getElementById("system-log");
+        if (log) {
+            const entry = document.createElement("div");
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            log.prepend(entry);
+            if (log.children.length > 10) log.lastChild.remove();
+        }
+    },
+
+    updateBrainStatus() {
+        const brainInfo = document.getElementById('brain-status');
+        if (brainInfo) {
+            const status = Brain.isSuperNode ? 'SUPER NODE' : 'MESH NODE';
+            brainInfo.textContent = `AUTONOMOUS: ${status} | ${Brain.state}`;
+            brainInfo.className = Brain.isSuperNode ? 'brain-active' : 'brain-idle';
+        }
+    },
+
+    trackTraffic(bytes) {
+        this.totalTraffic += bytes;
+        const trafficEl = document.getElementById('diag-traffic');
+        if (trafficEl) trafficEl.textContent = Math.round(this.totalTraffic / 1024) + 'kb';
+    },
+
+    updateDiagnostics() {
+        const uptimeEl = document.getElementById('diag-uptime');
+        if (uptimeEl) uptimeEl.textContent = Math.floor((Date.now() - this.startTime) / 1000) + 's';
+
+        const stabilityEl = document.getElementById('diag-stability');
+        if (stabilityEl) {
+            const lats = Array.from(P2P.connections.values()).map(i => i.latency);
+            const stability = lats.length === 0 ? 100 : Math.max(0, 100 - (lats.filter(l => l > 500).length * 20));
+            stabilityEl.textContent = stability + '%';
+            stabilityEl.style.color = stability > 80 ? 'var(--success)' : 'var(--warning)';
+        }
     },
 
     playSound(type) {
@@ -45,14 +88,8 @@ const UI = {
             const gain = this.audioCtx.createGain();
             osc.connect(gain); gain.connect(this.audioCtx.destination);
             const now = this.audioCtx.currentTime;
-            if (type === 'join') {
-                osc.frequency.setValueAtTime(440, now);
-                osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
-                gain.gain.setValueAtTime(0.1, now);
-            } else {
-                osc.frequency.setValueAtTime(660, now);
-                gain.gain.setValueAtTime(0.05, now);
-            }
+            osc.frequency.setValueAtTime(type === 'join' ? 440 : 660, now);
+            gain.gain.setValueAtTime(0.05, now);
             osc.start(); osc.stop(now + 0.1);
         } catch(e) {}
     },
@@ -63,29 +100,33 @@ const UI = {
             const id = document.getElementById('join-id')?.value.toUpperCase();
             if (id) this.initRoom(id);
         });
+        document.getElementById('scan-mesh')?.addEventListener('click', () => P2P.scanLocalMesh());
         document.getElementById('add-to-queue')?.addEventListener('click', () => {
             const url = document.getElementById('video-url')?.value;
             const id = Utils.parseYouTubeID(url);
-            if (id) State.addToQueue(id, 'Media Stream', P2P.peerID);
+            if (id) State.addToQueue(id, 'Syncing Media...', P2P.peerID);
         });
         document.getElementById('send-message')?.addEventListener('click', () => this.sendMessage());
         document.getElementById('wall-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.sendMessage(); });
         document.getElementById('create-poll-btn')?.addEventListener('click', () => document.getElementById('poll-modal').style.display = 'flex');
         document.getElementById('submit-poll')?.addEventListener('click', () => {
-            const question = document.getElementById('poll-q').value;
-            const options = Array.from(document.querySelectorAll('.poll-opt-in')).map(i => i.value).filter(v => v.trim());
-            if (question && options.length >= 2) {
-                State.addPoll(question, options, document.getElementById('poll-anon').checked, 5, P2P.peerID);
+            const q = document.getElementById('poll-q').value;
+            const o = Array.from(document.querySelectorAll('.poll-opt-in')).map(i => i.value).filter(v => v.trim());
+            if (q && o.length >= 2) {
+                State.addPoll(q, o, document.getElementById('poll-anon').checked, 5, P2P.peerID);
                 document.getElementById('poll-modal').style.display = 'none';
             }
         });
         document.getElementById('settings-toggle')?.addEventListener('click', () => window.toggleSettings());
         document.getElementById('copy-link')?.addEventListener('click', () => {
-            navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?room=" + P2P.roomID)
-                .then(() => Utils.toast("Mesh Invite Copied", "success"));
+            navigator.clipboard.writeText(window.location.href + "?room=" + P2P.roomID).then(() => Utils.toast("Link Copied", "success"));
+        });
+        document.getElementById('add-session')?.addEventListener('click', () => {
+            const id = prompt("Join parallel mesh?");
+            if (id) window.open(window.location.origin + window.location.pathname + "?room=" + id, "_blank");
         });
         document.getElementById('clear-local')?.addEventListener('click', async () => {
-            if (confirm('Wipe everything?')) { await Utils.db.clear(); localStorage.clear(); location.reload(); }
+            if (confirm('Wipe Mesh Cache?')) { await Utils.db.clear(); localStorage.clear(); location.reload(); }
         });
     },
 
@@ -110,6 +151,11 @@ const UI = {
         });
     },
 
+    setupNetworkStatus() {
+        window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hide'));
+        window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hide'));
+    },
+
     async initRoom(roomID = null) {
         try {
             document.getElementById('setup-screen').classList.add('hide');
@@ -119,6 +165,7 @@ const UI = {
             document.getElementById('display-room-id').textContent = P2P.roomID;
             if (document.getElementById('room-qr')) document.getElementById('room-qr').src = Utils.generateQR(window.location.href + "?room=" + P2P.roomID);
             this.playSound('join');
+            this.log('Mesh Node Activated: ' + P2P.peerID.substring(0,6));
         } catch (e) { Utils.toast('Mesh error', 'error'); }
     },
 
@@ -143,9 +190,7 @@ const UI = {
     sendMessage() {
         const text = document.getElementById('wall-input').value.trim();
         if (text) {
-            const data = { type: 'chat', text, avatar: `https://api.dicebear.com/7.x/bottts/svg?seed=${P2P.peerID}`, lifetime: Settings.current.msgLifetime };
-            P2P.broadcast(data);
-            State.addMessage(text, P2P.peerID, data.avatar, data.lifetime);
+            State.addMessage(text, P2P.peerID, `https://api.dicebear.com/7.x/bottts/svg?seed=${P2P.peerID}`, Settings.current.msgLifetime);
             document.getElementById('wall-input').value = '';
             this.playSound('msg');
         }
@@ -155,8 +200,25 @@ const UI = {
         this.renderQueue(data.queue);
         this.renderPolls(data.polls);
         this.renderWall(data.wall);
-        this.renderStatus(data);
+        this.renderStatus();
+        this.renderPeerList();
         if (this.isPlayerReady && data.player.videoID && data.player.videoID !== this.player.getVideoData().video_id) this.player.loadVideoById(data.player.videoID);
+        document.getElementById('msg-life-val').textContent = `${Settings.current.msgLifetime}s`;
+    },
+
+    renderPeerList() {
+        const container = document.getElementById('peer-list');
+        if (!container) return;
+        const peers = Array.from(P2P.connections.keys());
+        container.innerHTML = peers.map(id => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:0.4rem;">
+                <span style="font-size:0.7rem;font-family:monospace;">${id.substring(0,8)}</span>
+                <div style="display:flex;gap:0.4rem;">
+                    ${id === P2P.roomID ? '<span style="font-size:0.6rem;background:var(--primary);color:#000;padding:0.1rem 0.2rem;border-radius:4px;">HOST</span>' : ''}
+                    ${P2P.isHost ? `<button class="text-btn" onclick="P2P.kickPeer('${id}')" style="color:var(--accent);font-size:0.6rem;">KICK</button>` : `<button class="text-btn" onclick="P2P.proposeVote('kick', {peerID:'${id}'})" style="font-size:0.5rem;opacity:0.5;">VOTE KICK</button>`}
+                </div>
+            </div>
+        `).join("");
     },
 
     renderQueue(q) {
@@ -199,7 +261,7 @@ const UI = {
         container.innerHTML = w.map(msg => `
             <div class="msg" id="msg-${msg.id}">
                 <img src="${msg.senderAvatar}" style="width:32px;height:32px;border-radius:50%;">
-                <div style="flex:1;"><p style="font-size:0.85rem;line-height:1.4;">${msg.text}</p></div>
+                <div style="flex:1;"><p style="font-size:0.85rem;line-height:1.4;">${State.deobfuscate(msg.text)}</p></div>
                 <div class="msg-lifetime-bar" style="animation: shrink ${(msg.expiresAt-msg.createdAt)/1000}s linear forwards;"></div>
             </div>
         `).join('') || '<div class="skeleton" style="height:30px;opacity:0.1;width:60%;"></div>';
@@ -223,20 +285,16 @@ const UI = {
         container.innerHTML = '';
         const nodes = Array.from(P2P.connections.entries());
         nodes.push(['me', { latency: 0 }]);
-        const centerX = 80, centerY = 60, radius = 50;
-
-        // Draw Full-Mesh lines
+        const centerX = 90, centerY = 70, radius = 50;
         nodes.forEach((n1, i) => {
             const a1 = (i / nodes.length) * Math.PI * 2;
             const x1 = centerX + Math.cos(a1) * radius;
             const y1 = centerY + Math.sin(a1) * radius;
-
             nodes.forEach((n2, j) => {
                 if (i >= j) return;
                 const a2 = (j / nodes.length) * Math.PI * 2;
                 const x2 = centerX + Math.cos(a2) * radius;
                 const y2 = centerY + Math.sin(a2) * radius;
-
                 const line = document.createElement('div');
                 line.className = 'peer-line';
                 const dist = Math.hypot(x2 - x1, y2 - y1);
@@ -246,7 +304,6 @@ const UI = {
                 line.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`;
                 container.appendChild(line);
             });
-
             const node = document.createElement('div');
             node.className = 'peer-node';
             node.style.left = `${x1}px`; node.style.top = `${y1}px`;
@@ -256,4 +313,13 @@ const UI = {
     }
 };
 
+window.UI = UI;
 export default UI;
+
+    updateEvolutionHUD() {
+        const hud = document.getElementById('active-strategies');
+        if (hud) {
+            const active = Evolution.rules.filter(r => r.condition(Brain.metrics)).map(r => r.name);
+            hud.textContent = active.length > 0 ? 'Active Strategies: ' + active.join(', ') : 'Optimal State - Observing...';
+        }
+    }
