@@ -1,67 +1,50 @@
-# 📦 NEXUS MESH - V3 MESH EDITION
-**Hyper-Decentralized P2P Mesh Collaboration Hub**
-*Zero Backend • True Full-Mesh WebRTC • Modern Glassmorphism UI*
+# 🧬 NEXUS MESH - V5 EVOLVING EDITION
+**Self-Evolving • Swarm-Intelligence • Adaptive Role Mesh**
+*Zero Backend • Cognitive Brain Layer • Evolution Engine • Distributed Knowledge*
 
-Nexus Mesh V3 is the ultimate evolution of decentralized collaboration. It features a true full-mesh architecture where every node connects directly to every other node, ensuring maximum resilience and performance.
-
----
-
-## 🌐 Mesh Architecture (V3)
-- **Topology:** True Full-Mesh (N-to-N connections).
-- **Discovery:** Automatic peer discovery through mesh-gossip.
-- **Latency:** Real-time ping/pong measurement between all mesh nodes.
-- **Security:** Node Encryption (E2E obfuscation) and stealth modes.
-- **Privacy:** Approval-based entry and local-only mesh capabilities.
+Nexus Mesh V5 represents the peak of decentralized system design. It is no longer just a tool; it is a self-evolving digital organism that learns from network patterns and adapts its behavior to optimize performance and security.
 
 ---
 
-## 🎯 Core Features
-
-### 1. 🕸️ Advanced P2P Mesh Engine
-- **Peer Discovery:** Join one node, discover the whole mesh automatically.
-- **Full Topology Visualizer:** Animated graph showing all direct P2P links.
-- **Live Latency HUD:** Monitor connection quality (ms) to every peer.
-- **Host Authority:** Mesh owners can approve/reject joins or kick nodes.
-- **Multilink:** Manage and link between multiple parallel mesh networks.
-
-### 2. 🎬 Collaborative Media Player
-- **Mesh-Wide Sync:** Play/pause/seek synchronized across the entire mesh.
-- **Host Permissions:** Lock player controls to the session owner.
-- **Upvote Queue:** Community-driven media ordering with auto-play.
-
-### 3. 📊 Live Polling & Data
-- **Real-Time Mesh Voting:** Results aggregate instantly across nodes.
-- **Data Portability:** Export results as CSV or full room state as JSON.
-- **Expiry Timers:** Configurable auto-close for all polls.
-
-### 4. 💬 Ephemeral Mesh Wall
-- **Self-Destructing Messages:** Messages with visual life-bars and auto-deletion.
-- **Node Pinning:** Keep important mesh updates pinned to the wall.
-- **Swipe-to-Dismiss:** Intuitive mobile gestures for message management.
+## 🧬 Evolution Engine (V5)
+V5 introduces a **Reinforcement Learning Layer** that:
+- **Learns from Experience:** Tracks the success rate of routing and topology strategies.
+- **Mutates Strategies:** Dynamically adjusts rule priorities based on real-time feedback.
+- **Shared Knowledge:** Nodes broadcast "Mesh Wisdom" about reliable peers and fast routes.
 
 ---
 
-## 🎨 Modern UI/UX Design System
-- **Theme Support:** Dark, Light, and AMOLED Black modes.
-- **Responsive:** Mobile Tab Navigation and Desktop Grid Layout.
-- **Interactivity:** Sound FX, Keyboard Nav (Space/Esc), and Skeletons.
+## 🎯 V5 Cognitive Features
+
+### 1. 🧠 Mesh Intelligence
+- **Cognitive Brain:** Monitors message rates, CPU load, and latency trends to predict failures.
+- **Dynamic Roles:** Nodes automatically transition between roles (SuperNode, Relay, AI-Node) based on available resources.
+- **Swarm Memory:** Distributed knowledge base for collective mesh intelligence.
+
+### 2. 🛡️ Immune System Security
+- **Adaptive Throttling:** Automatically isolates high-traffic or spamming nodes.
+- **Trust Evolution:** Peer trust scores fluctuate based on long-term behavior patterns.
+- **E2E Obfuscation:** Version 5 distributed data protection layer.
+
+### 3. 🕸️ Self-Optimizing Topology
+- **Predictive Routing:** Reroutes traffic before a predicted node failure occurs.
+- **LAN + Web Hybrid:** Seamlessly blends local mesh discovery with global signaling.
 
 ---
 
-## 🛠️ Multi-Platform Support
-- **Windows:** Electron (.exe) - Installer & Portable.
-- **Android:** Capacitor (.apk) - Debug & Production ready.
-- **CI/CD:** Automated builds via GitHub Actions.
+## 🎨 V5 Intelligent UI
+- **Evolution HUD:** Monitor active strategies and mesh adaptations in real-time.
+- **Diagnostics V2:** Enhanced monitoring of mesh stability, traffic, and node health.
+- **Neural Themes:** Specialized glassmorphism styles for high-density information display.
 
 ---
 
-## 🚀 Quick Start
+## 🚀 Deployment & Builds
+- **Full CI/CD:** Automated pipelines for Windows EXE and Android APK.
+- **Vanilla Core:** Zero frameworks, high-performance ES6 implementation.
+
+---
+
+## 🛠️ Quick Start
 1. `npm install`
-2. Open `www/index.html` or run `npm run start:electron`
-3. Use `npm run build:win` for Windows binaries.
-
----
-
-## 📜 Technical Constraints
-- **Vanilla JS only.** No React/Vue/Svelte.
-- **Zero Backend.** Entirely client-side and browser-native.
+2. `npm run start:electron` or open `www/index.html`.

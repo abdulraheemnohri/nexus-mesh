@@ -96,3 +96,25 @@ input:focus { border-color: var(--primary); background: rgba(0,0,0,0.4); outline
 .msg .text-btn { opacity: 0; transition: opacity 0.2s; }
 .msg:hover .text-btn { opacity: 1 !important; }
 @media (max-width: 900px) { .msg .text-btn { opacity: 0.5; } }
+
+/* V4 Autonomous HUD */
+#brain-status {
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0.05em;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    transition: 0.3s;
+}
+.brain-active { color: var(--primary); background: rgba(0, 242, 255, 0.1); border: 1px solid var(--primary); }
+.brain-idle { color: var(--text-muted); background: rgba(255, 255, 255, 0.05); }
+
+#system-log {
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    font-family: monospace;
+    padding: 0.5rem;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.2);
+}
