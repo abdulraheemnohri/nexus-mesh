@@ -3,200 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEXUS MESH | Decentralized Hub</title>
+    <title>NEXUS MESH | Cyber-Workspace</title>
     <link rel="stylesheet" href="css/design-system.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-    <div id="offline-banner" class="hide" style="position: fixed; top: 0; left: 0; right: 0; background: var(--accent); color: white; text-align: center; padding: 0.5rem; z-index: 10000; font-weight: 700; font-size: 0.8rem; letter-spacing: 0.1em;">
-        OFFLINE MODE • RECONNECTING...
-    </div>
-
+    <!-- Initial Loading / Entry -->
     <div id="setup-screen" class="setup-container">
-        <div class="card setup-card">
-            <h1 class="gradient-text">NEXUS MESH</h1>
-            <p class="subtitle">Decentralized Collaboration Platform</p>
+        <div class="card" style="max-width: 460px; text-align: center; padding: 3rem;">
+            <h1 class="gradient-text" style="font-size: 3rem; font-weight: 800; margin-bottom: 0.5rem;">NEXUS</h1>
+            <p style="color: var(--text-muted); margin-bottom: 3rem; letter-spacing: 0.2em;">DECENTRALIZED NODE</p>
 
-            <button id="create-room" class="primary-btn large" style="width: 100%;">🚀 Create Private Room</button>
-            <button id="scan-mesh" class="secondary-btn" style="width: 100%; margin-top: 1rem;">📡 Scan Local Mesh</button>
+            <button id="create-room" class="btn-primary" style="width: 100%; padding: 1.5rem; font-size: 1.1rem; margin-bottom: 2rem;">
+                INITIATE MESH ⚡
+            </button>
 
-            <div class="separator">
-                <span>OR JOIN SESSION</span>
+            <div style="display: flex; gap: 0.8rem;">
+                <input type="text" id="join-id" placeholder="NODE ID" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 12px; padding: 1rem; flex: 1; text-align: center; font-family: 'JetBrains Mono';">
+                <button id="join-room" class="btn-ghost">JOIN</button>
             </div>
 
-            <div class="join-box">
-                <input type="text" id="join-id" placeholder="ENTER CODE" maxlength="6">
-                <button id="join-room" class="primary-btn">Join</button>
-            </div>
+            <button id="scan-mesh" style="margin-top: 1.5rem; font-size: 0.75rem; opacity: 0.6;" class="btn-ghost">SCAN LOCAL PROXIMITY</button>
         </div>
     </div>
 
-    <div id="app-screen" class="hide">
-        <header class="top-bar">
-            <div class="brand">
-                <span class="logo gradient-text">NEXUS</span>
-                <div class="session-info">
-                    <span id="brain-status" style="font-size:0.6rem; margin-right:1rem; opacity:0.7;">AUTONOMOUS: STARTUP</span>
+    <!-- Main Workspace -->
+    <div id="app-screen" class="app-layout hide">
+        <aside class="sidebar">
+            <div class="logo-icon gradient-text" style="font-weight: 800; font-size: 1.5rem;">NX</div>
+            <nav style="display: flex; flex-direction: column; gap: 1rem; width: 100%; align-items: center;">
+                <button class="nav-item mobile-tab active" data-target="media-workspace" title="Media Lab">📺</button>
+                <button class="nav-item mobile-tab" data-target="sketch-workspace" title="Whiteboard">🎨</button>
+                <button class="nav-item mobile-tab" data-target="file-workspace" title="Data Transfer">📂</button>
+                <button class="nav-item mobile-tab" data-target="chat-workspace" title="Signal Stream">💬</button>
+                <div style="flex: 1;"></div>
+                <button id="settings-toggle" class="nav-item" title="Node Configuration">⚙️</button>
+            </nav>
+        </aside>
+
+        <main class="workspace">
+            <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                <div style="display: flex; align-items: center; gap: 1rem;">
                     <div id="conn-status" class="connection-dot offline"></div>
-                    <span id="display-room-id">------</span>
+                    <span id="display-room-id" style="font-family: 'JetBrains Mono'; font-weight: bold; font-size: 1.2rem;">------</span>
                 </div>
-            </div>
+                <div id="evolution-hud" style="font-size: 0.7rem; padding: 0.5rem 1rem; background: rgba(0,242,255,0.05); border-radius: 20px; border: 1px solid rgba(0,242,255,0.1);">
+                    NEURAL STATE: OBSERVING
+                </div>
+                <div style="display: flex; gap: 1rem; align-items: center;">
+                    <button id="copy-link" class="btn-ghost" style="padding: 0.5rem;">Invite 🔗</button>
+                    <img id="room-qr" style="width: 32px; height: 32px; border-radius: 8px; cursor: pointer;">
+                </div>
+            </header>
 
-            <div class="header-actions">
-                <img id="room-qr" class="qr-preview" title="Share via QR">
-                <button id="copy-link" class="icon-btn" title="Copy Invite Link">🔗</button>
-                <button id="settings-toggle" class="icon-btn">⚙️</button>
-            </div>
-        </header>
-
-        <nav class="mobile-nav">
-            <button class="mobile-tab active" data-target="player-view">🎬 Player</button>
-            <button class="mobile-tab" data-target="wall-view">💬 Wall</button>
-            <button class="mobile-tab" data-target="polls-view">📊 Polls</button>
-        </nav>
-
-        <main class="container">
-            <div id="player-view" class="app-section left-col">
-                <section class="player-card card" style="overflow: hidden;">
+            <!-- Adaptive Sections -->
+            <div id="media-workspace" class="app-section mesh-grid">
+                <div class="card" style="grid-column: 1 / -1; padding: 0; overflow: hidden;">
                     <div id="youtube-player-container">
                         <div id="youtube-player"></div>
                     </div>
-                </section>
-
-                <section class="queue-card card" style="margin-top: 1.5rem; padding: 1.5rem;">
-                    <div class="input-group" style="padding: 0; border: none; margin-bottom: 1.5rem;">
-                        <input type="text" id="video-url" placeholder="Paste YouTube link...">
-                        <button id="add-to-queue" class="primary-btn" style="min-width: 80px;">Add</button>
+                </div>
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">SYNC QUEUE</h3>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+                        <input type="text" id="video-url" placeholder="URL..." style="background: rgba(0,0,0,0.3); border: none; border-radius: 8px; padding: 0.6rem; flex: 1;">
+                        <button id="add-to-queue" class="btn-primary" style="padding: 0.5rem 1rem;">+</button>
                     </div>
                     <div id="queue-list" class="queue-list"></div>
-                </section>
-            </div>
-
-            <div class="right-col">
-                <div id="wall-view" class="app-section mobile-hide">
-                    <section class="card wall-card">
-                        <div class="card-header" style="padding: 1.5rem 1.5rem 0;">
-                            <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase;">Message Wall</h3>
-                        </div>
-                        <div id="wall-messages" class="wall-messages"></div>
-                        <div class="input-group wall-input-box">
-                            <input type="text" id="wall-input" placeholder="Type a message...">
-                            <button id="send-message" class="icon-btn primary-btn">➜</button>
-                        </div>
-                    </section>
                 </div>
-
-                <div id="polls-view" class="app-section mobile-hide">
-                    <section class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                            <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase;">Live Polls</h3>
-                            <button id="create-poll-btn" class="text-btn">+ New Poll</button>
-                        </div>
-                        <div id="polls-list"></div>
-                    </section>
-
-                    <section class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
-                        <h3 style="font-size: 0.7rem; letter-spacing: 0.2em; color: var(--text-muted); text-transform: uppercase; margin-bottom: 1.5rem;">Network Topology</h3>
-                        <div id="topology-viz" class="topology-box"></div>
-                    <div id="evolution-hud" style="margin-top:1rem; padding:0.8rem; background:rgba(0,242,255,0.05); border:1px solid var(--primary); border-radius:8px; font-size:0.65rem;">
-                        <p style="color:var(--primary); font-weight:700; margin-bottom:0.4rem; letter-spacing:0.05em;">EVOLUTION ENGINE ACTIVE</p>
-                        <div id="active-strategies" style="color:var(--text-muted);">Observing Network Patterns...</div>
-                    </div>
-                    <div id="mesh-diagnostics" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-top:1rem; font-size:0.6rem; color:var(--text-muted);">
-                        <span>UPTIME: <b id="diag-uptime" style="color:var(--primary);">0s</b></span>
-                        <span>TRAFFIC: <b id="diag-traffic" style="color:var(--primary);">0kb</b></span>
-                        <span>STABILITY: <b id="diag-stability" style="color:var(--success);">100%</b></span>
-                        <span>PROTOCOL: <b style="color:var(--primary);">NXM-V4</b></span>
-                    </div>
-                    <div id="system-log" style="margin-bottom:1rem;"></div>
-                    <div id="peer-list" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 1rem;"></div>
-                    </section>
+                <div class="card">
+                    <h3 style="margin-bottom: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">POLL CONSENSUS</h3>
+                    <div id="polls-list"></div>
+                    <button id="create-poll-btn" class="btn-ghost" style="width: 100%; margin-top: 1rem;">+ NEW POLL</button>
                 </div>
             </div>
+
+            <div id="sketch-workspace" class="app-section mobile-hide animate-slide">
+                <div class="card" style="height: 600px; display: flex; flex-direction: column;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                        <h3>SKETCH MESH</h3>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="color" id="sketch-color" value="#00f2ff" style="width: 40px; padding: 0; border: none;">
+                            <button id="sketch-clear" class="btn-ghost" style="padding: 0.2rem 0.6rem; font-size: 0.7rem;">CLEAR</button>
+                        </div>
+                    </div>
+                    <canvas id="sketch-canvas" class="sketch-canvas"></canvas>
+                </div>
+            </div>
+
+            <div id="file-workspace" class="app-section mobile-hide animate-slide">
+                <div class="card">
+                    <h3>DATA EXCHANGE</h3>
+                    <div style="padding: 2rem; border: 2px dashed var(--border); border-radius: 12px; text-align: center; margin: 1.5rem 0; cursor: pointer;" id="drop-zone">
+                        <p style="color: var(--text-muted);">Drop files to broadcast to mesh</p>
+                        <input type="file" id="file-input" style="display: none;">
+                    </div>
+                    <div id="file-list"></div>
+                </div>
+            </div>
+
+            <div id="chat-workspace" class="app-section mobile-hide animate-slide">
+                <div class="card wall-card" style="height: 600px;">
+                    <div id="wall-messages" class="wall-messages"></div>
+                    <div style="padding: 1rem; border-top: 1px solid var(--border); display: flex; gap: 0.8rem;">
+                        <input type="text" id="wall-input" placeholder="Signal node..." style="flex: 1; background: transparent; border: none;">
+                        <button id="send-message" class="btn-primary" style="padding: 0.6rem 1.2rem;">➜</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Diagnostics & Logs -->
+            <footer style="margin-top: 3rem; display: grid; grid-template-columns: 1fr 300px; gap: 2rem;">
+                <div class="card" style="padding: 1rem;">
+                    <div id="system-log" style="height: 100px; overflow-y: auto; font-family: 'JetBrains Mono'; font-size: 0.7rem;"></div>
+                </div>
+                <div class="card" style="padding: 1rem;">
+                    <div id="topology-viz" class="node-hub"></div>
+                    <div id="mesh-diagnostics" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.8rem; font-size: 0.6rem; opacity: 0.7;">
+                        <span>UPTIME: <b id="diag-uptime">0s</b></span>
+                        <span>TRAFFIC: <b id="diag-traffic">0kb</b></span>
+                        <span>STABILITY: <b id="diag-stability">100%</b></span>
+                        <span>PROTO: <b>NXM-V5</b></span>
+                    </div>
+                </div>
+            </footer>
         </main>
     </div>
 
+    <!-- Overlay Panels -->
     <div id="overlay" class="overlay"></div>
     <div id="settings-panel" class="side-panel">
-        <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
-            <h2>Settings</h2>
-            <button id="add-session" class="text-btn" style="font-size:0.7rem;">+ Multilink</button>
-            <button onclick="toggleSettings()" class="icon-btn">✕</button>
-        </div>
-
-        <div class="panel-content" style="display: flex; flex-direction: column; gap: 1.5rem;">
-            <div class="setting-item">
-                <label style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">UI Theme</label>
-                <select id="setting-theme" onchange="window.Settings.update('theme', this.value)" style="margin-top: 0.5rem;">
-                    <option value="dark">Space Night</option>
-                    <option value="light">Arctic Light</option>
-                    <option value="amoled">Pure Black</option>
+        <h2>NODE CONFIG</h2>
+        <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1.5rem;">
+            <div>
+                <label>ENVIRONMENT</label>
+                <select id="setting-theme" onchange="window.Settings.update('theme', this.value)">
+                    <option value="dark">CYBERPUNK</option>
+                    <option value="light">MINIMALIST</option>
+                    <option value="amoled">DEEP SPACE</option>
                 </select>
             </div>
-
-            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
-                <input type="checkbox" id="setting-require-approval" onchange="window.Settings.update('requireApproval', this.checked)" style="width: auto;">
-                <label for="setting-require-approval" style="font-size: 0.9rem;">Host must approve joins</label>
+            <div style="display: flex; align-items: center; justify-content: space-between;">
+                <label>STEALTH MODE</label>
+                <input type="checkbox" id="setting-stealth" style="width: auto;">
             </div>
-
-            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
-                <input type="checkbox" id="setting-host-only" onchange="window.State.update('player.hostOnly', this.checked)" style="width: auto;">
-                <label for="setting-host-only" style="font-size: 0.9rem;">Restrict Player Sync to Host</label>
-            </div>
-
-            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
-                <input type="checkbox" id="setting-sound-fx" checked onchange="window.Settings.update('soundFx', this.checked)" style="width: auto;">
-                <label for="setting-sound-fx" style="font-size: 0.9rem;">Enable Sound Effects</label>
-            </div>
-
-            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
-                <input type="checkbox" id="setting-e2e" onchange="window.Settings.update('e2e', this.checked)" style="width: auto;">
-                <label for="setting-e2e" style="font-size: 0.9rem;">Mesh Node Encryption (E2E)</label>
-            </div>
-
-            <div class="setting-item">
-                <label style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase;">Message Lifetime</label>
-                <input type="range" min="10" max="300" step="10" id="setting-msg-life" oninput="window.Settings.update('msgLifetime', parseInt(this.value))" style="margin-top: 0.5rem;">
-                <span id="msg-life-val" style="display: block; text-align: center; font-size: 0.8rem; margin-top: 0.5rem;">60s</span>
-            </div>
-
-            <div class="panel-footer" style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem; border-top: 1px solid var(--border); padding-top: 2rem;">
-                <button id="export-data" class="secondary-btn" style="width: 100%;">💾 Export Session State</button>
-                <div class="file-input-wrapper">
-                    <button class="secondary-btn" style="width: 100%;">📂 Import Session State</button>
-                    <input type="file" id="import-data" style="position: absolute; inset: 0; opacity: 0; cursor: pointer;">
-                </div>
-                <div id="host-actions" class="hide" style="display: flex; flex-direction: column; gap: 0.8rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
-                    <label style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Host Actions</label>
-                    <button onclick="window.State.clearQueue()" class="secondary-btn" style="width: 100%;">🧹 Clear Shared Queue</button>
-                    <button onclick="window.State.clearWall()" class="secondary-btn" style="width: 100%;">🧹 Clear Message Wall</button>
-                </div>
-                <button id="clear-local" class="secondary-btn" style="width: 100%; color: var(--accent); border-color: rgba(255,0,85,0.2);">🗑️ Wipe Local Cache</button>
-            </div>
+            <button id="export-data" class="btn-ghost" style="width: 100%;">💾 DUMP STATE</button>
+            <button id="clear-local" class="btn-ghost" style="width: 100%; color: var(--accent);">🗑️ WIPE CACHE</button>
         </div>
     </div>
 
     <div id="poll-modal" class="modal">
         <div class="card modal-card">
-            <h3>Create New Poll</h3>
+            <h3>CONSENSUS PROPOSAL</h3>
             <div class="modal-body">
-                <input type="text" id="poll-q" placeholder="Enter your question...">
-                <div id="poll-options-inputs" class="opt-list" style="display: flex; flex-direction: column; gap: 0.8rem; margin: 1rem 0;">
+                <input type="text" id="poll-q" placeholder="The question is...">
+                <div id="poll-options-inputs" class="opt-list">
                     <input type="text" class="poll-opt-in" placeholder="Option 1">
                     <input type="text" class="poll-opt-in" placeholder="Option 2">
                 </div>
-                <button onclick="addPollOptionField()" class="text-btn" style="width: 100%; text-align: center;">+ Add Voting Option</button>
-
-                <div class="checkbox-item" style="display: flex; align-items: center; gap: 0.8rem; margin: 1rem 0;">
-                    <input type="checkbox" id="poll-anon" style="width: auto;">
-                    <label for="poll-anon">Anonymous voting</label>
-                </div>
-
-                <div class="modal-footer" style="display: flex; gap: 1rem;">
-                    <button id="submit-poll" class="primary-btn" style="flex: 1; padding: 1rem;">Create</button>
-                    <button onclick="closePollModal()" class="secondary-btn" style="flex: 1; padding: 1rem;">Cancel</button>
+                <button onclick="addPollOptionField()" class="btn-ghost" style="width: 100%;">+ ADD OPTION</button>
+                <div class="modal-footer">
+                    <button id="submit-poll" class="btn-primary" style="flex: 1;">PROPOSE</button>
+                    <button onclick="closePollModal()" class="btn-ghost" style="flex: 1;">CANCEL</button>
                 </div>
             </div>
         </div>
@@ -215,10 +184,8 @@
         window.Settings = Settings;
         window.State = State;
         window.toggleSettings = () => {
-            const panel = document.getElementById('settings-panel');
-            const overlay = document.getElementById('overlay');
-            panel.classList.toggle('active');
-            overlay.classList.toggle('active');
+            document.getElementById('settings-panel').classList.toggle('active');
+            document.getElementById('overlay').classList.toggle('active');
         };
         window.addPollOptionField = () => {
             const container = document.getElementById('poll-options-inputs');
@@ -230,9 +197,7 @@
                 container.appendChild(input);
             }
         };
-        window.closePollModal = () => {
-            document.getElementById('poll-modal').style.display = 'none';
-        };
+        window.closePollModal = () => document.getElementById('poll-modal').style.display = 'none';
         document.getElementById('overlay').onclick = window.toggleSettings;
     </script>
 </body>

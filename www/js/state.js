@@ -15,6 +15,7 @@ const State = {
         queue: [],
         polls: [],
         wall: [],
+        dms: [],
         knowledge: {
             bestRoutes: [],
             blacklistedPeers: []
@@ -154,3 +155,14 @@ State.downloadPoll = (id) => {
 };
 
 export default State;
+
+State.sendDM = (targetId, text) => {
+    const dm = {
+        id: Utils.generateID(8),
+        from: P2P.peerID,
+        to: targetId,
+        text: State.obfuscate(text),
+        t: Date.now()
+    };
+    State.update('dms', [...State.data.dms, dm]);
+};

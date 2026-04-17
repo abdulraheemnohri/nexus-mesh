@@ -1,12 +1,14 @@
-import Evolution from './evolution.js';
 /**
- * NEXUS MESH V4 - Autonomous UI Layer
+ * NEXUS MESH - Hyper-Swarm Workspace UI
  */
 import Utils from './utils.js';
 import State from './state.js';
 import P2P from './core.js';
 import Settings from './settings.js';
 import Brain from './brain.js';
+import Evolution from './evolution.js';
+import Swarm from './swarm.js';
+import Sketchboard from './sketch.js';
 
 const UI = {
     player: null,
@@ -22,6 +24,7 @@ const UI = {
         this.setupMobileTabs();
         this.setupKeyboardNav();
         this.setupNetworkStatus();
+        this.setupSwarmListeners();
 
         State.subscribe((data) => this.render(data));
         this.render(State.data);
@@ -35,11 +38,25 @@ const UI = {
             this.updateTimestamps();
             this.updateTopology();
             this.updateBrainStatus();
-            this.updateDiagnostics(); this.updateEvolutionHUD();
+            this.updateDiagnostics();
         }, 1000);
 
         window.addEventListener('mesh-updated', () => this.updateTopology());
         window.addEventListener('mesh-log', (e) => this.log(e.detail));
+
+        Sketchboard.init("sketch-canvas");
+    },
+
+    setupSwarmListeners() {
+        window.addEventListener('swarm-new-torrent', (e) => {
+            const torrent = Swarm.torrents.get(e.detail);
+            this.renderTorrent(torrent);
+            Utils.toast('Swarm: New file detected', 'info');
+        });
+        window.addEventListener('swarm-progress', (e) => {
+            const el = document.getElementById(`swarm-progress-${e.detail.infoHash}`);
+            if (el) el.style.width = `${e.detail.percent}%`;
+        });
     },
 
     log(msg) {
@@ -48,16 +65,15 @@ const UI = {
             const entry = document.createElement("div");
             entry.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
             log.prepend(entry);
-            if (log.children.length > 10) log.lastChild.remove();
+            if (log.children.length > 20) log.lastChild.remove();
         }
     },
 
     updateBrainStatus() {
-        const brainInfo = document.getElementById('brain-status');
+        const brainInfo = document.getElementById('evolution-hud');
         if (brainInfo) {
-            const status = Brain.isSuperNode ? 'SUPER NODE' : 'MESH NODE';
-            brainInfo.textContent = `AUTONOMOUS: ${status} | ${Brain.state}`;
-            brainInfo.className = Brain.isSuperNode ? 'brain-active' : 'brain-idle';
+            const active = Evolution.rules.filter(r => r.condition(Brain.metrics)).map(r => r.name);
+            brainInfo.textContent = active.length > 0 ? 'INTELLIGENCE: ' + active[0] : 'NEURAL STATE: BALANCED';
         }
     },
 
@@ -70,13 +86,11 @@ const UI = {
     updateDiagnostics() {
         const uptimeEl = document.getElementById('diag-uptime');
         if (uptimeEl) uptimeEl.textContent = Math.floor((Date.now() - this.startTime) / 1000) + 's';
-
         const stabilityEl = document.getElementById('diag-stability');
         if (stabilityEl) {
             const lats = Array.from(P2P.connections.values()).map(i => i.latency);
             const stability = lats.length === 0 ? 100 : Math.max(0, 100 - (lats.filter(l => l > 500).length * 20));
             stabilityEl.textContent = stability + '%';
-            stabilityEl.style.color = stability > 80 ? 'var(--success)' : 'var(--warning)';
         }
     },
 
@@ -89,7 +103,7 @@ const UI = {
             osc.connect(gain); gain.connect(this.audioCtx.destination);
             const now = this.audioCtx.currentTime;
             osc.frequency.setValueAtTime(type === 'join' ? 440 : 660, now);
-            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.setValueAtTime(0.02, now);
             osc.start(); osc.stop(now + 0.1);
         } catch(e) {}
     },
@@ -104,30 +118,57 @@ const UI = {
         document.getElementById('add-to-queue')?.addEventListener('click', () => {
             const url = document.getElementById('video-url')?.value;
             const id = Utils.parseYouTubeID(url);
-            if (id) State.addToQueue(id, 'Syncing Media...', P2P.peerID);
+            if (id) State.addToQueue(id, 'Swarm Media', P2P.peerID);
         });
         document.getElementById('send-message')?.addEventListener('click', () => this.sendMessage());
         document.getElementById('wall-input')?.addEventListener('keypress', (e) => { if (e.key === 'Enter') this.sendMessage(); });
         document.getElementById('create-poll-btn')?.addEventListener('click', () => document.getElementById('poll-modal').style.display = 'flex');
-        document.getElementById('submit-poll')?.addEventListener('click', () => {
-            const q = document.getElementById('poll-q').value;
-            const o = Array.from(document.querySelectorAll('.poll-opt-in')).map(i => i.value).filter(v => v.trim());
-            if (q && o.length >= 2) {
-                State.addPoll(q, o, document.getElementById('poll-anon').checked, 5, P2P.peerID);
-                document.getElementById('poll-modal').style.display = 'none';
+
+        document.getElementById('drop-zone')?.addEventListener('click', () => document.getElementById('file-input').click());
+        document.getElementById('file-input')?.addEventListener('change', async (e) => {
+            if (e.target.files.length > 0) {
+                const infoHash = await Swarm.createTorrent(e.target.files[0]);
+                this.renderTorrent(Swarm.torrents.get(infoHash));
             }
         });
+
         document.getElementById('settings-toggle')?.addEventListener('click', () => window.toggleSettings());
         document.getElementById('copy-link')?.addEventListener('click', () => {
             navigator.clipboard.writeText(window.location.href + "?room=" + P2P.roomID).then(() => Utils.toast("Link Copied", "success"));
         });
-        document.getElementById('add-session')?.addEventListener('click', () => {
-            const id = prompt("Join parallel mesh?");
-            if (id) window.open(window.location.origin + window.location.pathname + "?room=" + id, "_blank");
-        });
         document.getElementById('clear-local')?.addEventListener('click', async () => {
-            if (confirm('Wipe Mesh Cache?')) { await Utils.db.clear(); localStorage.clear(); location.reload(); }
+            if (confirm('Wipe everything?')) { await Utils.db.clear(); localStorage.clear(); location.reload(); }
         });
+    },
+
+    renderTorrent(t) {
+        const container = document.getElementById('file-list');
+        const card = document.createElement('div');
+        card.className = 'file-card animate-slide';
+        card.id = `torrent-${t.infoHash}`;
+        card.innerHTML = `
+            <div style="flex: 1;">
+                <p style="font-size: 0.9rem; font-weight: 700;">${t.name}</p>
+                <div class="progress-track"><div class="progress-fill" id="swarm-progress-${t.infoHash}" style="width: ${t.availability.every(a=>a)?'100':'0'}%"></div></div>
+                <p style="font-size: 0.6rem; color: var(--text-muted); margin-top: 0.4rem;">SWARM HASH: ${t.infoHash}</p>
+            </div>
+            <button class="btn-primary" onclick="window.UI.saveTorrent('${t.infoHash}')" style="padding:0.4rem 0.8rem; font-size:0.7rem;">SAVE</button>
+        `;
+        container.prepend(card);
+    },
+
+    saveTorrent(infoHash) {
+        const t = Swarm.torrents.get(infoHash);
+        if (!t || !t.availability.every(a => a)) return Utils.toast('Wait for download...', 'warning');
+        const blob = new Blob(t.pieces.map(p => p.data));
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = t.name; a.click();
+    },
+
+    openDM(id) {
+        const text = prompt("Signal private node " + id.substring(0,4));
+        if (text) State.sendDM(id, text);
     },
 
     setupMobileTabs() {
@@ -152,8 +193,8 @@ const UI = {
     },
 
     setupNetworkStatus() {
-        window.addEventListener('online', () => document.getElementById('offline-banner').classList.add('hide'));
-        window.addEventListener('offline', () => document.getElementById('offline-banner').classList.remove('hide'));
+        window.addEventListener('online', () => Utils.toast('Mesh: Back Online', 'success'));
+        window.addEventListener('offline', () => Utils.toast('Mesh: Working Offline', 'warning'));
     },
 
     async initRoom(roomID = null) {
@@ -165,8 +206,8 @@ const UI = {
             document.getElementById('display-room-id').textContent = P2P.roomID;
             if (document.getElementById('room-qr')) document.getElementById('room-qr').src = Utils.generateQR(window.location.href + "?room=" + P2P.roomID);
             this.playSound('join');
-            this.log('Mesh Node Activated: ' + P2P.peerID.substring(0,6));
-        } catch (e) { Utils.toast('Mesh error', 'error'); }
+            this.log('Node Identified: ' + P2P.peerID.substring(0,8));
+        } catch (e) { Utils.toast('Handshake failed', 'error'); }
     },
 
     setupYouTubeAPI() {
@@ -203,19 +244,22 @@ const UI = {
         this.renderStatus();
         this.renderPeerList();
         if (this.isPlayerReady && data.player.videoID && data.player.videoID !== this.player.getVideoData().video_id) this.player.loadVideoById(data.player.videoID);
-        document.getElementById('msg-life-val').textContent = `${Settings.current.msgLifetime}s`;
     },
 
     renderPeerList() {
         const container = document.getElementById('peer-list');
         if (!container) return;
-        const peers = Array.from(P2P.connections.keys());
-        container.innerHTML = peers.map(id => `
-            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.4rem;background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:0.4rem;">
-                <span style="font-size:0.7rem;font-family:monospace;">${id.substring(0,8)}</span>
-                <div style="display:flex;gap:0.4rem;">
-                    ${id === P2P.roomID ? '<span style="font-size:0.6rem;background:var(--primary);color:#000;padding:0.1rem 0.2rem;border-radius:4px;">HOST</span>' : ''}
-                    ${P2P.isHost ? `<button class="text-btn" onclick="P2P.kickPeer('${id}')" style="color:var(--accent);font-size:0.6rem;">KICK</button>` : `<button class="text-btn" onclick="P2P.proposeVote('kick', {peerID:'${id}'})" style="font-size:0.5rem;opacity:0.5;">VOTE KICK</button>`}
+        const peers = Array.from(P2P.connections.entries());
+        container.innerHTML = peers.map(([id, info]) => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:0.8rem;background:rgba(255,255,255,0.03);border-radius:12px;margin-bottom:0.6rem; border: 1px solid var(--border);">
+                <div>
+                    <p style="font-size:0.75rem;font-family:'JetBrains Mono';font-weight:700;">${id.substring(0,8)}</p>
+                    <p style="font-size:0.6rem; color:var(--text-muted);">LATENCY: ${info.latency}ms</p>
+                </div>
+                <div style="display:flex;gap:0.4rem;align-items:center;">
+                    <button class="text-btn" onclick="window.UI.openDM('${id}')" style="font-size:0.8rem;">✉️</button>
+                    ${id === P2P.roomID ? '<span style="font-size:0.5rem;background:var(--primary);color:#000;padding:0.1rem 0.3rem;border-radius:4px;font-weight:800;">HOST</span>' : ''}
+                    ${P2P.isHost ? `<button class="text-btn" onclick="P2P.kickPeer('${id}')" style="color:var(--accent);font-size:0.8rem;">✕</button>` : ""}
                 </div>
             </div>
         `).join("");
@@ -228,11 +272,11 @@ const UI = {
             <div class="queue-item">
                 <div style="flex:1;"><p style="font-weight:700;font-size:0.85rem;">${item.title}</p></div>
                 <div style="display:flex;gap:0.4rem;">
-                    <button class="secondary-btn" onclick="window.State.voteQueue('${item.id}', '${P2P.peerID}', 1)">👍 ${item.votes}</button>
-                    <button class="primary-btn" onclick="window.State.update('player.videoID', '${item.videoID}')">▶</button>
+                    <button class="btn-ghost" onclick="window.State.voteQueue('${item.id}', '${P2P.peerID}', 1)" style="padding: 0.3rem 0.6rem; font-size:0.8rem; border-radius:8px;">👍 ${item.votes}</button>
+                    <button class="btn-primary" onclick="window.State.update('player.videoID', '${item.videoID}')" style="padding: 0.3rem 0.6rem; border-radius:8px;">▶</button>
                 </div>
             </div>
-        `).join('') || '<div class="skeleton" style="height:40px;opacity:0.1;"></div>';
+        `).join('') || '<div class="skeleton" style="height:40px;opacity:0.05;"></div>';
     },
 
     renderPolls(p) {
@@ -258,13 +302,21 @@ const UI = {
     renderWall(w) {
         const container = document.getElementById('wall-messages');
         if (!container) return;
-        container.innerHTML = w.map(msg => `
-            <div class="msg" id="msg-${msg.id}">
-                <img src="${msg.senderAvatar}" style="width:32px;height:32px;border-radius:50%;">
-                <div style="flex:1;"><p style="font-size:0.85rem;line-height:1.4;">${State.deobfuscate(msg.text)}</p></div>
-                <div class="msg-lifetime-bar" style="animation: shrink ${(msg.expiresAt-msg.createdAt)/1000}s linear forwards;"></div>
+
+        // Include DMs in the wall view for local node
+        const myDMs = State.data.dms.filter(d => d.to === P2P.peerID || d.from === P2P.peerID);
+        const allMsgs = [...w, ...myDMs.map(d=>({...d, isDM:true}))].sort((a,b) => b.createdAt-a.createdAt || b.t-a.t);
+
+        container.innerHTML = allMsgs.map(msg => `
+            <div class="msg ${msg.isDM ? 'dm-msg' : ''}" id="msg-${msg.id}">
+                <img src="${msg.senderAvatar || 'https://api.dicebear.com/7.x/bottts/svg?seed='+msg.from}" style="width:34px;height:34px;border-radius:50%;border:1px solid var(--border);">
+                <div style="flex:1;">
+                    <p style="font-size:0.6rem; color:var(--text-muted); margin-bottom:0.2rem; font-weight:700;">${(msg.senderID || msg.from).substring(0,8)} ${msg.isDM ? '[PRIVATE]' : ''}</p>
+                    <p style="font-size:0.85rem;line-height:1.4;">${State.deobfuscate(msg.text)}</p>
+                </div>
+                ${!msg.isDM ? `<div class="msg-lifetime-bar" style="animation: shrink ${(msg.expiresAt-msg.createdAt)/1000}s linear forwards;"></div>` : ''}
             </div>
-        `).join('') || '<div class="skeleton" style="height:30px;opacity:0.1;width:60%;"></div>';
+        `).join('') || '<div class="skeleton" style="height:30px;opacity:0.05;width:70%;"></div>';
     },
 
     renderStatus() {
@@ -272,12 +324,7 @@ const UI = {
         if (dot) dot.className = `connection-dot ${P2P.connections.size > 0 ? 'online' : 'offline'}`;
     },
 
-    updateTimestamps() {
-        document.querySelectorAll('.poll-timer').forEach(el => {
-            const diff = Math.floor((parseInt(el.dataset.expires) - Date.now()) / 1000);
-            el.textContent = diff > 0 ? `Ends in ${Math.floor(diff/60)}m ${diff%60}s` : 'Closed';
-        });
-    },
+    updateTimestamps() {},
 
     updateTopology() {
         const container = document.getElementById('topology-viz');
@@ -285,7 +332,7 @@ const UI = {
         container.innerHTML = '';
         const nodes = Array.from(P2P.connections.entries());
         nodes.push(['me', { latency: 0 }]);
-        const centerX = 90, centerY = 70, radius = 50;
+        const centerX = 120, centerY = 120, radius = 80;
         nodes.forEach((n1, i) => {
             const a1 = (i / nodes.length) * Math.PI * 2;
             const x1 = centerX + Math.cos(a1) * radius;
@@ -307,7 +354,7 @@ const UI = {
             const node = document.createElement('div');
             node.className = 'peer-node';
             node.style.left = `${x1}px`; node.style.top = `${y1}px`;
-            if (n1[0] === 'me') node.style.background = 'var(--accent)';
+            if (n1[0] === 'me') { node.style.background = 'var(--primary)'; node.style.width = '20px'; node.style.height = '20px'; }
             container.appendChild(node);
         });
     }
@@ -315,11 +362,3 @@ const UI = {
 
 window.UI = UI;
 export default UI;
-
-    updateEvolutionHUD() {
-        const hud = document.getElementById('active-strategies');
-        if (hud) {
-            const active = Evolution.rules.filter(r => r.condition(Brain.metrics)).map(r => r.name);
-            hud.textContent = active.length > 0 ? 'Active Strategies: ' + active.join(', ') : 'Optimal State - Observing...';
-        }
-    }
