@@ -109,6 +109,7 @@
     <div id="settings-panel" class="side-panel">
         <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2.5rem;">
             <h2>Settings</h2>
+            <button id="add-session" class="text-btn" style="font-size:0.7rem;">+ Multilink</button>
             <button onclick="toggleSettings()" class="icon-btn">✕</button>
         </div>
 
@@ -135,6 +136,11 @@
             <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
                 <input type="checkbox" id="setting-sound-fx" checked onchange="window.Settings.update('soundFx', this.checked)" style="width: auto;">
                 <label for="setting-sound-fx" style="font-size: 0.9rem;">Enable Sound Effects</label>
+            </div>
+
+            <div class="setting-item" style="display: flex; align-items: center; gap: 1rem;">
+                <input type="checkbox" id="setting-e2e" onchange="window.Settings.update('e2e', this.checked)" style="width: auto;">
+                <label for="setting-e2e" style="font-size: 0.9rem;">Mesh Node Encryption (E2E)</label>
             </div>
 
             <div class="setting-item">

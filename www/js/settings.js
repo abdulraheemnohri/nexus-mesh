@@ -15,7 +15,9 @@ const Settings = {
         requireApproval: false,
         soundFx: true,
         profanityFilter: true,
-        localOnly: false
+        localOnly: false,
+        sessions: [],
+        e2e: false
     },
 
     current: {},

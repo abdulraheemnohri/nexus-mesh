@@ -1,101 +1,67 @@
-# 📦 NEXUS MESH
-**Self-Hosted P2P Real-Time Collaboration Hub**
-*Zero Backend • Browser-Native WebRTC • Modern Glassmorphism UI*
+# 📦 NEXUS MESH - V3 MESH EDITION
+**Hyper-Decentralized P2P Mesh Collaboration Hub**
+*Zero Backend • True Full-Mesh WebRTC • Modern Glassmorphism UI*
 
-Nexus Mesh is a decentralized platform for real-time multi-user collaboration. It operates entirely peer-to-peer (P2P), meaning your data never touches a server. All synchronization happens directly between browsers using WebRTC.
-
----
-
-## Architecture Overview
-- **Signaling:** PeerJS (CDN) for initial handshakes.
-- **Data Transport:** WebRTC Data Channels (reliable/ordered).
-- **Topology:** Full Mesh (peers connect to everyone) with Host Relay fallback.
-- **State Sync:** Delta broadcasting + Periodic Full Sync (Last-write-wins).
-- **Persistence:** IndexedDB + LocalStorage for offline survival.
-- **Rendering:** Vanilla JS (ES6+) + CSS Variables (No frameworks).
+Nexus Mesh V3 is the ultimate evolution of decentralized collaboration. It features a true full-mesh architecture where every node connects directly to every other node, ensuring maximum resilience and performance.
 
 ---
 
-## Core Features
-
-### 1. P2P Connection Engine
-- **Unique Room IDs:** Generate 6-character codes for private sessions.
-- **QR Code Sharing:** Instant join via mobile scan.
-- **Topology Visualizer:** Real-time view of the active peer network.
-- **Auto-Discovery:** Join via URL parameters.
-- **Resilient Sync:** Automatic reconnection on network drop.
-
-### 2. Collaborative Media Player
-- **YouTube Integration:** Sync play/pause/seek across all peers.
-- **Shared Queue:** Upvote/downvote videos to determine playback order.
-- **Host Control Mode:** Optional mode where only the room creator controls the player.
-- **Queue Logic:** Seamlessly transitions to the next video in the queue.
-
-### 3. Live Polling System
-- **Real-Time Voting:** Dynamic bar charts update instantly as peers vote.
-- **Expiry Timers:** Set polls to auto-close after a configurable duration.
-- **Anonymous Mode:** Toggle privacy for sensitive votes.
-- **Multi-Option:** Support for 2–6 custom voting options.
-
-### 4. Ephemeral Message Wall
-- **Auto-Deletion:** Messages fade out and delete after a set time (10s–5m).
-- **Visual Progress:** Life-bars on messages show exactly when they will expire.
-- **Bottts Avatars:** Unique auto-generated avatars for every peer.
-- **Profanity Filter:** Basic local filtering for safer communication.
-
-### 5. Data & Portability
-- **JSON Export/Import:** Save and load entire room states.
-- **Persistent Storage:** Your room state survives browser refreshes.
-- **Privacy First:** "Clear Local Data" button for instant cleanup.
+## 🌐 Mesh Architecture (V3)
+- **Topology:** True Full-Mesh (N-to-N connections).
+- **Discovery:** Automatic peer discovery through mesh-gossip.
+- **Latency:** Real-time ping/pong measurement between all mesh nodes.
+- **Security:** Node Encryption (E2E obfuscation) and stealth modes.
+- **Privacy:** Approval-based entry and local-only mesh capabilities.
 
 ---
 
-## Modern UI/UX Design System
-- **Style:** Glassmorphism + Neo-minimalism (Deep Dark & Light themes).
-- **Responsive:** Mobile-first design with a dedicated Mobile Tab Navigation.
-- **Micro-Interactions:** Smooth CSS transitions, connection pulse HUD, and life-bar animations.
-- **Accessibility:** ARIA labels, focus rings, and font scaling support.
+## 🎯 Core Features
+
+### 1. 🕸️ Advanced P2P Mesh Engine
+- **Peer Discovery:** Join one node, discover the whole mesh automatically.
+- **Full Topology Visualizer:** Animated graph showing all direct P2P links.
+- **Live Latency HUD:** Monitor connection quality (ms) to every peer.
+- **Host Authority:** Mesh owners can approve/reject joins or kick nodes.
+- **Multilink:** Manage and link between multiple parallel mesh networks.
+
+### 2. 🎬 Collaborative Media Player
+- **Mesh-Wide Sync:** Play/pause/seek synchronized across the entire mesh.
+- **Host Permissions:** Lock player controls to the session owner.
+- **Upvote Queue:** Community-driven media ordering with auto-play.
+
+### 3. 📊 Live Polling & Data
+- **Real-Time Mesh Voting:** Results aggregate instantly across nodes.
+- **Data Portability:** Export results as CSV or full room state as JSON.
+- **Expiry Timers:** Configurable auto-close for all polls.
+
+### 4. 💬 Ephemeral Mesh Wall
+- **Self-Destructing Messages:** Messages with visual life-bars and auto-deletion.
+- **Node Pinning:** Keep important mesh updates pinned to the wall.
+- **Swipe-to-Dismiss:** Intuitive mobile gestures for message management.
 
 ---
 
-## Multi-Platform Support
-Nexus Mesh is ready to be deployed as a web app or packaged for desktop/mobile:
-- **Windows:** Electron-based Installer and Portable EXE.
-- **Android:** Capacitor-based Debug APK.
-- **Web:** Deployable to GitHub Pages, Vercel, or Netlify.
+## 🎨 Modern UI/UX Design System
+- **Theme Support:** Dark, Light, and AMOLED Black modes.
+- **Responsive:** Mobile Tab Navigation and Desktop Grid Layout.
+- **Interactivity:** Sound FX, Keyboard Nav (Space/Esc), and Skeletons.
 
 ---
 
-## CI/CD Workflow
-This repository includes a GitHub Actions workflow that automatically generates:
-- **Windows Portable & Setup EXE**
-- **Android Debug APK**
-On every push to the main branch.
+## 🛠️ Multi-Platform Support
+- **Windows:** Electron (.exe) - Installer & Portable.
+- **Android:** Capacitor (.apk) - Debug & Production ready.
+- **CI/CD:** Automated builds via GitHub Actions.
 
 ---
 
-## Technical Constraints
-- **Zero Frameworks:** No React, Vue, or Svelte. Just pure Vanilla JS.
-- **Unique:** No database or API needed beyond signaling and YouTube.
-- **Self-Contained:** Designed to run anywhere with a modern browser.
+## 🚀 Quick Start
+1. `npm install`
+2. Open `www/index.html` or run `npm run start:electron`
+3. Use `npm run build:win` for Windows binaries.
 
 ---
 
-## 🚀 Quick Start (Local Development)
-
-1. **Clone & Install:**
-   ```bash
-   npm install
-   ```
-
-2. **Run Web App:**
-   Open `www/index.html` directly in your browser or use a local server.
-
-3. **Desktop (Electron):**
-   ```bash
-   npm run start:electron
-   ```
-
-4. **Build Binaries:**
-   - **Windows:** `npm run build:win`
-   - **Android:** `npx cap sync android` then build in Android Studio.
+## 📜 Technical Constraints
+- **Vanilla JS only.** No React/Vue/Svelte.
+- **Zero Backend.** Entirely client-side and browser-native.

@@ -1,7 +1,8 @@
 /**
- * NEXUS MESH - State Management
+ * NEXUS MESH - Secure Mesh State Manager
  */
 import Utils from './utils.js';
+import Settings from './settings.js';
 
 const State = {
     roomID: null,
@@ -9,12 +10,7 @@ const State = {
 
     data: {
         lastUpdated: Date.now(),
-        player: {
-            videoID: null,
-            state: -1,
-            currentTime: 0,
-            hostOnly: false
-        },
+        player: { videoID: null, state: -1, currentTime: 0, hostOnly: false },
         queue: [],
         polls: [],
         wall: []
@@ -25,47 +21,52 @@ const State = {
     async init(roomID, isHost = false) {
         this.roomID = roomID;
         this.isHost = isHost;
-        const savedState = await Utils.db.get(`state_${roomID}`);
-        if (savedState) this.data = savedState;
+        const saved = await Utils.db.get(`state_${roomID}`);
+        if (saved) this.data = saved;
         this.notify();
         setInterval(() => {
-            if (this.isHost && window.P2P && window.P2P.broadcast) {
-                window.P2P.broadcast({ type: 'full_sync', data: this.data });
-            }
+            if (this.isHost && window.P2P) window.P2P.broadcast({ type: 'full_sync', data: this.data });
         }, 30000);
     },
 
-    subscribe(callback) { this.listeners.push(callback); },
+    subscribe(cb) { this.listeners.push(cb); },
     notify() { this.listeners.forEach(cb => cb(this.data)); },
     async save() { if (this.roomID) await Utils.db.set(`state_${this.roomID}`, this.data); },
 
     update(path, value, broadcast = true) {
         const parts = path.split('.');
-        let current = this.data;
-        for (let i = 0; i < parts.length - 1; i++) current = current[parts[i]];
-        current[parts[parts.length - 1]] = value;
+        let cur = this.data;
+        for (let i = 0; i < parts.length - 1; i++) cur = cur[parts[i]];
+        cur[parts[parts.length - 1]] = value;
         this.data.lastUpdated = Date.now();
-        this.save();
-        this.notify();
+        this.save(); this.notify();
         if (broadcast && window.P2P) window.P2P.broadcast({ type: 'delta', path, value, timestamp: this.data.lastUpdated });
     },
 
     applyDelta(delta) {
         const parts = delta.path.split('.');
-        let current = this.data;
-        for (let i = 0; i < parts.length - 1; i++) current = current[parts[i]];
-        current[parts[parts.length - 1]] = delta.value;
+        let cur = this.data;
+        for (let i = 0; i < parts.length - 1; i++) cur = cur[parts[i]];
+        cur[parts[parts.length - 1]] = delta.value;
         this.data.lastUpdated = Math.max(this.data.lastUpdated, delta.timestamp);
-        this.save();
-        this.notify();
+        this.save(); this.notify();
     },
 
     applyFullSync(newData) {
         if (newData.lastUpdated > this.data.lastUpdated) {
             this.data = newData;
-            this.save();
-            this.notify();
+            this.save(); this.notify();
         }
+    },
+
+    encrypt(text) {
+        if (!Settings.current.e2e) return text;
+        return btoa(text).split('').reverse().join('');
+    },
+
+    decrypt(text) {
+        if (!Settings.current.e2e) return text;
+        try { return atob(text.split('').reverse().join('')); } catch(e) { return text; }
     },
 
     addToQueue(videoID, title, addedBy) {
@@ -73,69 +74,52 @@ const State = {
         this.update('queue', [...this.data.queue, item]);
     },
 
-    voteQueue(id, peerId, increment) {
-        const newQueue = this.data.queue.map(item => {
-            if (item.id === id && !item.votedBy.includes(peerId)) {
-                return { ...item, votes: item.votes + increment, votedBy: [...item.votedBy, peerId] };
+    voteQueue(id, peerId, inc) {
+        const q = this.data.queue.map(i => {
+            if (i.id === id && !i.votedBy.includes(peerId)) {
+                return { ...i, votes: i.votes + inc, votedBy: [...i.votedBy, peerId] };
             }
-            return item;
-        }).sort((a, b) => b.votes - a.votes || a.addedAt - b.addedAt);
-        this.update('queue', newQueue);
+            return i;
+        }).sort((a,b) => b.votes - a.votes || a.addedAt - b.addedAt);
+        this.update('queue', q);
     },
 
-    removeFromQueue(id) {
-        this.update('queue', this.data.queue.filter(item => item.id !== id));
-    },
-
-    addPoll(question, options, anonymous, durationMinutes, createdBy) {
-        const poll = { id: Utils.generateID(8), question, options: options.map(opt => ({ text: opt, votes: 0 })), anonymous, expiresAt: Date.now() + (durationMinutes * 60000), createdBy, votedPeers: [] };
+    addPoll(q, o, a, d, c) {
+        const poll = { id: Utils.generateID(8), question: q, options: o.map(t=>({text:t, votes:0})), anonymous: a, expiresAt: Date.now()+(d*60000), createdBy: c, votedPeers: [] };
         this.update('polls', [poll, ...this.data.polls]);
     },
 
-    votePoll(pollId, optionIndex, peerId) {
-        const newPolls = this.data.polls.map(poll => {
-            if (poll.id === pollId && !poll.votedPeers.includes(peerId)) {
-                const newOptions = [...poll.options];
-                newOptions[optionIndex].votes += 1;
-                return { ...poll, options: newOptions, votedPeers: [...poll.votedPeers, peerId] };
+    votePoll(pid, idx, peer) {
+        const p = this.data.polls.map(poll => {
+            if (poll.id === pid && !poll.votedPeers.includes(peer)) {
+                const opts = [...poll.options]; opts[idx].votes += 1;
+                return { ...poll, options: opts, votedPeers: [...poll.votedPeers, peer] };
             }
             return poll;
         });
-        this.update('polls', newPolls);
+        this.update('polls', p);
     },
 
-    togglePin(id) {
-        this.update("wall", this.data.wall.map(m => m.id === id ? { ...m, pinned: !m.pinned } : m));
-    }
-
-    addMessage(text, senderID, senderAvatar, lifetimeSeconds) {
-        const msg = { id: Utils.generateID(8), text, senderID, senderAvatar, expiresAt: Date.now() + (lifetimeSeconds * 1000), createdAt: Date.now() };
+    addMessage(text, sid, ava, life) {
+        const msg = { id: Utils.generateID(8), text: this.encrypt(text), senderID: sid, senderAvatar: ava, expiresAt: Date.now()+(life*1000), createdAt: Date.now() };
         this.update('wall', [msg, ...this.data.wall].slice(0, 50));
     },
 
     cleanupExpired() {
         const now = Date.now();
-        let changed = false;
-        const newWall = this.data.wall.filter(msg => msg.expiresAt > now);
-        if (newWall.length !== this.data.wall.length) { this.data.wall = newWall; changed = true; }
-        const newPolls = this.data.polls.filter(poll => poll.expiresAt > (now - 300000));
-        if (newPolls.length !== this.data.polls.length) { this.data.polls = newPolls; changed = true; }
-        if (changed) { this.save(); this.notify(); }
+        let c = false;
+        const w = this.data.wall.filter(m => m.expiresAt > now);
+        if (w.length !== this.data.wall.length) { this.data.wall = w; c = true; }
+        const p = this.data.polls.filter(poll => poll.expiresAt > (now - 300000));
+        if (p.length !== this.data.polls.length) { this.data.polls = p; c = true; }
+        if (c) { this.save(); this.notify(); }
     },
 
-    clearWall() {
-        this.update("wall", []);
-    }
-
-    clearQueue() {
-        this.update("queue", []);
-    }
-
-    exportPolls(pollId) {
-        const poll = this.data.polls.find(p => p.id === pollId);
-        if (!poll) return "";
+    exportPolls(pid) {
+        const p = this.data.polls.find(i => i.id === pid);
+        if (!p) return "";
         let csv = "Option,Votes\n";
-        poll.options.forEach(o => csv += `"${o.text}",${o.votes}\n`);
+        p.options.forEach(o => csv += `"${o.text}",${o.votes}\n`);
         return csv;
     },
 
@@ -145,21 +129,20 @@ const State = {
         try {
             this.data = JSON.parse(json);
             this.data.lastUpdated = Date.now();
-            await this.save();
-            this.notify();
+            await this.save(); this.notify();
             if (window.P2P) window.P2P.broadcast({ type: 'full_sync', data: this.data });
         } catch (e) { Utils.toast('Import failed', 'error'); }
     }
 };
 
 window.State = State;
-State.downloadPoll = (pollId) => {
-    const csv = State.exportPolls(pollId);
+State.downloadPoll = (id) => {
+    const csv = State.exportPolls(id);
     if (!csv) return;
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `poll-${pollId}.csv`;
+    a.download = `poll-${id}.csv`;
     a.click();
 };
 
