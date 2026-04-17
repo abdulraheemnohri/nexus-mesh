@@ -1,12 +1,12 @@
-import Security from './security.js';
 /**
- * NEXUS MESH - Advanced Swarm P2P Engine
+ * NEXUS MESH V5 - Autonomous P2P Engine
  */
 import Utils from './utils.js';
 import State from './state.js';
 import Settings from './settings.js';
 import Brain from './brain.js';
 import Swarm from './swarm.js';
+import Security from './security.js';
 
 const P2P = {
     peer: null,
@@ -17,7 +17,7 @@ const P2P = {
     knownPeers: new Set(),
     reconnectAttempts: 0,
     votes: new Map(),
-    messageCache: new Set(), // For Gossip deduplication
+    messageCache: new Set(),
 
     async init(roomID = null) {
         this.roomID = roomID || Utils.generateID();
@@ -65,16 +65,23 @@ const P2P = {
     setupConnection(conn) {
         conn.on('open', () => {
             this.connections.set(conn.peer, { conn, latency: 0, joinedAt: Date.now() });
-            this.knownPeers.add(conn.peer);
+            if (!Settings.current.stealth) this.knownPeers.add(conn.peer);
 
             if (this.isHost) {
-                this.gossip({ type: 'discovery', peers: Array.from(this.knownPeers) });
+                this.gossip({ type: 'discovery', peers: Array.from(this.knownPeers), stealth: Settings.current.stealth });
                 conn.send({ type: 'full_sync', data: State.data });
             }
 
             this.startPing(conn.peer);
             conn.send({ type: 'node_identity', key: Security.publicKeyJWK });
-            window.dispatchEvent(new CustomEvent('mesh-log', { detail: 'Node Link: ' + conn.peer.substring(0,4) }));
+
+            if (Settings.current.camouflage) {
+                setInterval(() => {
+                    if (conn.open) conn.send({ type: 'noop', pad: Utils.generateID(128) });
+                }, 15000);
+            }
+
+            window.dispatchEvent(new CustomEvent('mesh-log', { detail: 'Secure Link: ' + conn.peer.substring(0,4) }));
             window.dispatchEvent(new CustomEvent('mesh-updated'));
         });
 
@@ -100,7 +107,6 @@ const P2P = {
     },
 
     handleData(data, sid) {
-        // Gossip Deduplication
         if (data.msgId) {
             if (this.messageCache.has(data.msgId)) return;
             this.messageCache.add(data.msgId);
@@ -118,20 +124,20 @@ const P2P = {
                 }
                 break;
             case 'discovery':
+                if (data.stealth && !this.isHost) break;
                 Brain.optimizeRouting(data.peers).forEach(id => this.connectToPeer(id));
                 break;
             case 'node_identity':
                 const peerInfo = this.connections.get(sid);
                 if (peerInfo) {
                     peerInfo.publicKey = data.key;
-                    window.dispatchEvent(new CustomEvent('mesh-log', { detail: 'Node Key Exchange: ' + sid.substring(0,4) }));
+                    window.dispatchEvent(new CustomEvent('mesh-log', { detail: 'Handshake: ' + sid.substring(0,4) }));
                 }
                 break;
             case 'delta': State.applyDelta(data); break;
             case 'full_sync': State.applyFullSync(data.data); break;
             case 'knowledge_sync':
                 State.data.knowledge = data.knowledge;
-                window.dispatchEvent(new CustomEvent("mesh-log", { detail: "Swarm Knowledge Updated" }));
                 break;
             case 'chat': State.addMessage(data.text, sid, data.avatar, data.lifetime); break;
             case 'vote': this.handleGovernanceVote(data, sid); break;
@@ -142,26 +148,21 @@ const P2P = {
         }
     },
 
-    // Gossip Protocol (Flooding with TTL)
-    gossip(data, exclude = []) {
-        if (!data.msgId) data.msgId = Utils.generateID(10);
-        if (data.ttl === undefined) data.ttl = 5; // Default 5 hops
-
-        this.connections.forEach((info, id) => {
-            if (!exclude.includes(id) && info.conn.open) {
-                info.conn.send(data);
-            }
-        });
-    },
-
-    broadcast(data, exclude = []) { this.gossip(data, exclude); },
-
     handleGovernanceVote(data, sid) {
-        const actionId = data.actionId;
-        if (!this.votes.has(actionId)) this.votes.set(actionId, new Set());
-        this.votes.get(actionId).add(sid);
-        if (this.votes.get(actionId).size / (this.connections.size + 1) >= 0.6) {
-            this.executeAutonomousAction(actionId, data.payload);
+        const aid = data.actionId;
+        if (!this.votes.has(aid)) this.votes.set(aid, new Set());
+        this.votes.get(aid).add(sid);
+
+        // Smart Autonomous Auto-Vote
+        if (sid !== this.peerID && !this.votes.get(aid).has(this.peerID)) {
+            if ((Brain.trust.get(sid) || 0) > 80) {
+                this.votes.get(aid).add(this.peerID);
+                this.broadcast({ ...data, sid: this.peerID });
+            }
+        }
+
+        if (this.votes.get(aid).size / (this.connections.size + 1) >= 0.6) {
+            this.executeAutonomousAction(aid, data.payload);
         }
     },
 
@@ -169,13 +170,23 @@ const P2P = {
         if (id.startsWith('kick:')) this.kickPeer(payload.peerID);
     },
 
+    gossip(data, exclude = []) {
+        if (!data.msgId) data.msgId = Utils.generateID(10);
+        if (data.ttl === undefined) data.ttl = 5;
+        this.connections.forEach((info, id) => {
+            if (!exclude.includes(id) && info.conn.open) info.conn.send(data);
+        });
+    },
+
+    broadcast(data, exclude = []) { this.gossip(data, exclude); },
+
     kickPeer(id) {
         this.connections.get(id)?.conn.send({ type: 'kick' });
         this.connections.get(id)?.conn.close();
     },
 
     scanLocalMesh: async () => {
-        Utils.toast('Scanning Swarm Proximity...', 'info');
+        Utils.toast('Scanning Swarm...', 'info');
         for (let i = 1; i <= 5; i++) {
             const testID = "SWARM" + i;
             if (testID !== P2P.peerID) P2P.connectToPeer(testID);
@@ -186,9 +197,8 @@ const P2P = {
 window.P2P = P2P;
 export default P2P;
 
-// Knowledge Gossip Loop
 setInterval(() => {
-    if (P2P.connections.size > 0 && State.data.knowledge.bestRoutes.length > 0) {
+    if (P2P.connections.size > 0 && State.data.knowledge.routes.length > 0) {
         P2P.broadcast({ type: 'knowledge_sync', knowledge: State.data.knowledge });
     }
 }, 60000);

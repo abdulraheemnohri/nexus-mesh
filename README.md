@@ -1,49 +1,40 @@
-# 🌌 NEXUS MESH - V6 HYPER-SWARM EDITION
-**High-Fidelity • Torrent-Style Exchange • Swarm Intelligence • Cyber-Glass UI**
+# 🌌 NEXUS MESH - V5.1 PROFESSIONAL SWARM
+**Self-Evolving • Hyper-Secure • Professional Swarm Intelligence**
 
-Nexus Mesh V6 is the most advanced P2P system ever built for the browser. It combines BitTorrent-style piece exchange with a self-evolving swarm brain, all wrapped in a high-fidelity Cyber-Glass workspace.
-
----
-
-## 🌪️ Swarm Architecture (V6)
-- **Torrent Exchange:** Files are split into pieces with SHA-1 hash verification.
-- **Availability Maps:** Nodes broadcast piece availability for multi-source parallel downloading.
-- **Advanced Gossip:** TTL-limited flooding with Bloom Filter-style deduplication.
-- **Node Identity:** Cryptographic RSA-based session keys for secure node identification.
+Nexus Mesh V5.1 is the pinnacle of decentralized collaboration. It integrates BitTorrent-style piece exchange with a cognitive mesh brain and a professional-grade Cyber-Glass workspace.
 
 ---
 
-## 🎨 Cyber-Glass Workspace
-V6 features a completely redesigned high-fidelity UI:
-- **Workspace Sidebar:** Quick access to Media Lab, Sketch Mesh, Data Exchange, and Signal Stream.
-- **High-Fidelity FX:** Noise textures, mesh gradients, and saturation-based glassmorphism.
-- **Node Topology V2:** Animated full-mesh graph showing all inter-node links.
+## 🌪️ Professional Swarm Architecture
+- **Adaptive Swarm Engine:** Piece-based file distribution with hash integrity and dynamic parallel fetching.
+- **Smart Governance:** Consensus-based mesh management with autonomous auto-voting for trusted nodes.
+- **Zero-Footprint Mode:** Volatile mesh states for maximum privacy, leaving zero traces in storage.
+- **Node Security:** AES-GCM 256-bit Mesh Vault with RSA-based node identification.
 
 ---
 
-## 🎯 Core Modules
-
-### 1. 🗂️ Swarm Data Exchange
-- **Piece-based Transfer:** Reliable multi-peer file sharing.
-- **Parallel Fetch:** Download file chunks from multiple peers simultaneously to maximize bandwidth.
-
-### 2. 🎨 Sketch Mesh
-- **Collaborative Whiteboard:** Synchronized drawing across the entire swarm.
-- **Real-Time Stroke Sync:** High-performance vector-based stroke distribution.
-
-### 3. 🧠 Cognitive Mesh Brain
-- **Adaptive Intelligence:** System learns from network conditions and evolves routing rules.
-- **SuperNode Election:** High-performance nodes are automatically promoted.
+## 🎨 Advanced Cyber-Glass UI
+- **Workspace Sidebar:** Integrated Lab access for Media, Sketch, and Data.
+- **Real-Time Topology:** Live mesh graph with data-flow pulses and latency tracking.
+- **Autonomous Activity:** Detailed feed of mesh-brain decisions and network optimizations.
+- **Stealth Integration:** Ghost node support and signal obfuscation.
 
 ---
 
-## 🚀 Build & Deployment
-- **Multi-Platform:** Windows EXE (Portable/Installer) and Android APK.
-- **CI/CD:** Continuous delivery via GitHub Actions.
-- **Offline Core:** Works on local WiFi/LAN meshes without external internet.
+## 🎯 Core Capabilities
+1. **Dynamic Media Sync:** Shared YouTube player with host-only override.
+2. **Collaborative Sketching:** Real-time synchronized whiteboard for all mesh nodes.
+3. **Hyper-Privacy:** Signal delay obfuscation to prevent timing attacks.
+4. **Self-Healing:** Autonomous routing and SuperNode self-election.
+
+---
+
+## 🚀 Deployment
+- **Multi-Platform:** Windows EXE and Android APK support.
+- **Offline Mesh:** Native peer discovery over local networks.
 
 ---
 
 ## 🛠️ Quick Start
 1. `npm install`
-2. Run `npm run start:electron` or open `www/index.html`.
+2. `npm run start:electron` or open `www/index.html`.

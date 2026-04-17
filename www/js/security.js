@@ -1,54 +1,55 @@
 /**
- * NEXUS MESH - Cryptographic Node Identity
+ * NEXUS MESH - Hyper-Privacy Security Layer
  */
+import Utils from './utils.js';
+import Settings from './settings.js';
+
 class MeshSecurity {
     constructor() {
         this.keyPair = null;
         this.publicKeyJWK = null;
+        this.meshPassphrase = null;
+        this.derivedKey = null;
     }
 
     async init() {
-        // Generate ephemeral RSA keypair for this session
         this.keyPair = await crypto.subtle.generateKey(
-            {
-                name: "RSASSA-PKCS1-v1_5",
-                modulusLength: 2048,
-                publicExponent: new Uint8Array([1, 0, 1]),
-                hash: "SHA-256",
-            },
-            true,
-            ["sign", "verify"]
+            { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" },
+            true, ["sign", "verify"]
         );
-
         this.publicKeyJWK = await crypto.subtle.exportKey("jwk", this.keyPair.publicKey);
-        console.log("Node Identity Initialized:", this.publicKeyJWK.n.substring(0, 10));
     }
 
-    async signMessage(data) {
-        const encoder = new TextEncoder();
-        const signature = await crypto.subtle.sign(
-            "RSASSA-PKCS1-v1_5",
-            this.keyPair.privateKey,
-            encoder.encode(JSON.stringify(data))
+    async setPassphrase(pass) {
+        this.meshPassphrase = pass;
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(pass), "PBKDF2", false, ["deriveKey"]);
+        this.derivedKey = await crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt: enc.encode("Utils.generateID(16)"), iterations: 100000, hash: "SHA-256" },
+            keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
         );
-        return Array.from(new Uint8Array(signature));
+        console.log("Vault: Security Layer Primed");
     }
 
-    async verifyMessage(data, signature, publicKeyJWK) {
-        const key = await crypto.subtle.importKey(
-            "jwk",
-            publicKeyJWK,
-            { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-            true,
-            ["verify"]
-        );
-        const encoder = new TextEncoder();
-        return await crypto.subtle.verify(
-            "RSASSA-PKCS1-v1_5",
-            key,
-            new Uint8Array(signature),
-            encoder.encode(JSON.stringify(data))
-        );
+    async encrypt(text) {
+        if (!this.derivedKey) return text;
+        const enc = new TextEncoder();
+        const iv = crypto.getRandomValues(new Uint8Array(12));
+        const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, this.derivedKey, enc.encode(text));
+        return {
+            c: btoa(String.fromCharCode(...new Uint8Array(ciphertext))),
+            iv: btoa(String.fromCharCode(...iv))
+        };
+    }
+
+    async decrypt(data) {
+        if (!this.derivedKey || typeof data === 'string') return data;
+        try {
+            const ciphertext = new Uint8Array(atob(data.c).split("").map(c => c.charCodeAt(0)));
+            const iv = new Uint8Array(atob(data.iv).split("").map(c => c.charCodeAt(0)));
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, this.derivedKey, ciphertext);
+            return new TextDecoder().decode(decrypted);
+        } catch (e) { return "[VAULT SECURE]"; }
     }
 }
 

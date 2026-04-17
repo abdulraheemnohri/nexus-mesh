@@ -10,7 +10,7 @@ class MeshBrain {
             latency: 0,
             load: 0,
             stability: 1.0,
-            msgRate: 0
+            msgRate: 0, startTime: Date.now()
         };
         this.role = 'MESH_NODE';
         this.trust = new Map();
@@ -28,7 +28,7 @@ class MeshBrain {
             avgLatency: count > 0 ? totalLat / count : 0,
             stability: this.calculateStability(connections),
             messageRate: this.getMsgRate(),
-            cpu: 0.1 // Simulated
+            cpu: Math.random() * 0.2, uptime: (Date.now() - this.startTime)/1000 // Simulated
         };
 
         // 2. Observer Phase (Evolution Engine)
