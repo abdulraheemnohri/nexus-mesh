@@ -1,5 +1,5 @@
 /**
- * NEXUS MESH - Settings Manager
+ * NEXUS MESH - Advanced Settings Manager
  */
 const Settings = {
     defaults: {
@@ -11,7 +11,11 @@ const Settings = {
         anonymousPolls: false,
         fontScale: 1,
         highContrast: false,
-        reducedMotion: false
+        reducedMotion: false,
+        requireApproval: false,
+        soundFx: true,
+        profanityFilter: true,
+        localOnly: false
     },
 
     current: {},
